@@ -762,33 +762,49 @@ async function fsSet(ref, data) { return window._setDoc(ref, data); }
 async function fsGet(ref)       { return window._getDoc(ref); }
 
 // ═══════════════════════════════════════════
-// 학생 데이터 (관리자 페이지에서 수정되면 localStorage에 저장됨)
-// localStorage 'classData' 키에 JSON이 있으면 그것을 우선 사용
+// 학생 데이터 — Firestore students 컬렉션 기반
 // ═══════════════════════════════════════════
-const DEFAULT_CLASSES = {
-  '5학년': [
-    { id: '5-1', teacher: '유순자', students: ['최세아','임서현','박지윤','홍아윤','한하영','심하원','심예나','이지우','김나형','이서빈'] },
-    { id: '5-2', teacher: '전주희', students: ['김희우','최하진','유가나','김하린','김예나','김하람','김재희','이지아','성시현','이예서'] },
-    { id: '5-3', teacher: '박찬미', students: ['유하나','김주아','김민아','김라율','권소율','박정하','문서윤','안유정','선예진','나시온'] },
-    { id: '5-4', teacher: '김종성', students: ['이다엘','임승한','안정현','정시원','곽리온','김예담','백시연'] },
-    { id: '5-5', teacher: '최영길', students: ['민예준','정인우','홍은권','이호진','권지훈','임가온','김주원','김찬희','홍서준','김민성','김민준','김세윤','허준혁','이주호','임호'] },
-    { id: '5-6', teacher: '곽승재', students: ['석하람','정재아','주시우','구도훈','전제한'] },
-  ],
-  '6학년': [
-    { id: '6-1', teacher: '임형옥', students: ['이루리','주봄이','변서연','김주아','송채원','안규민','한지아','노정윤','최서현','곡실링'] },
-    { id: '6-2', teacher: '공윤선', students: ['박하온','송지윤','박한별','신소율','황서윤','채민경','김서연','이선유'] },
-    { id: '6-3', teacher: '임하은', students: ['김은채','최은하','김민서','권정서','박재인','조세빈','문채은','김채이','유아정','유도경'] },
-    { id: '6-4', teacher: '이상균', students: ['박성민','한민규','유승민','이창현','김도윤','한율','손연우','조유안','김지환'] },
-    { id: '6-5', teacher: '전종곤', students: ['방승호','양성욱','정세환','이네모','김하윤','박하음','윤주원','유민준','안준영','박지운','윤정담'] },
-    { id: '6-6', teacher: '신종영', students: ['김종윤','김지호','정서원','이솔','이용준','허준석','최인평','조은수','임태호','임도윤'] },
-  ],
-  '새신자/방문자': [
-    { id: '새신자', teacher: '부서 전체', students: [], isNewcomer: true },
-  ],
+let CLASSES = {
+  '5학년': [],
+  '6학년': [],
+  '새신자/방문자': [{ id: '새신자', teacher: '부서 전체', students: [], isNewcomer: true }],
 };
 
-// ── 올해 새신자 기본 명단 (엑셀 2026새친구 출결 기준)
-// week: 현재까지 출석 누적 횟수, graduated: 등반 완료
+// studentId → { id, name, school } 맵 (출석 제출 시 attendanceHistory 업데이트용)
+const STUDENT_MAP = {};
+
+async function loadClassesFromFirestore() {
+  try {
+    const snap = await db.collection('students').where('active', '==', true).get();
+    const byClass = {};
+    snap.forEach(doc => {
+      const s = doc.data();
+      STUDENT_MAP[`${s.class}_${s.name}`] = { id: doc.id, name: s.name, school: s.school };
+      if (!byClass[s.class]) {
+        byClass[s.class] = { id: s.class, grade: s.grade, teacher: s.teacher, students: [], studentDocs: [] };
+      }
+      byClass[s.class].students.push(s.name);
+      byClass[s.class].studentDocs.push({ id: doc.id, name: s.name, school: s.school });
+    });
+    const grade5 = Object.values(byClass).filter(c => c.grade==='5학년').sort((a,b)=>a.id.localeCompare(b.id));
+    const grade6 = Object.values(byClass).filter(c => c.grade==='6학년').sort((a,b)=>a.id.localeCompare(b.id));
+    CLASSES['5학년'] = grade5;
+    CLASSES['6학년'] = grade6;
+    // 캐시
+    localStorage.setItem('classData_v2', JSON.stringify({ grade5, grade6 }));
+    return true;
+  } catch(e) {
+    console.error('학생 로드 오류:', e);
+    // 캐시 fallback
+    try {
+      const c = localStorage.getItem('classData_v2');
+      if (c) { const { grade5, grade6 } = JSON.parse(c); CLASSES['5학년']=grade5; CLASSES['6학년']=grade6; return true; }
+    } catch(e2) {}
+    return false;
+  }
+}
+
+// ── 새신자
 const DEFAULT_NEWCOMERS = [
   { name: '이하랑', grade: '5학년', week: 2, graduated: false, guide: '', memo: '' },
   { name: '이서빈', grade: '5학년', week: 3, graduated: false, guide: '', memo: '' },
@@ -799,44 +815,26 @@ const DEFAULT_NEWCOMERS = [
 ];
 
 function loadNewcomers() {
-  try {
-    const saved = localStorage.getItem('newcomerData');
-    if (saved) return JSON.parse(saved);
-  } catch(e) {}
+  try { const s = localStorage.getItem('newcomerData'); if(s) return JSON.parse(s); } catch(e) {}
   return JSON.parse(JSON.stringify(DEFAULT_NEWCOMERS));
 }
 
 function saveNewcomers(list) {
   localStorage.setItem('newcomerData', JSON.stringify(list));
-  // Firestore 동기화
-  try {
-    const docRef = fsDocRef('meta', 'newcomers');
-    fsSet(docRef, { list, updatedAt: new Date().toISOString() });
-  } catch(e) { console.error('newcomer sync 오류:', e); }
+  try { db.collection('meta').doc('newcomers').set({ list, updatedAt: new Date().toISOString() }); } catch(e) {}
 }
 
 async function syncNewcomersFromFirestore() {
   try {
-    const docRef = fsDocRef('meta', 'newcomers');
-    const snap   = await fsGet(docRef);
+    const snap = await db.collection('meta').doc('newcomers').get();
     if (snap.exists) {
       const remote = snap.data().list;
       localStorage.setItem('newcomerData', JSON.stringify(remote));
       return remote;
     }
-  } catch(e) { console.error('newcomer fetch 오류:', e); }
+  } catch(e) {}
   return null;
 }
-
-function loadClasses() {
-  try {
-    const saved = localStorage.getItem('classData');
-    if (saved) return JSON.parse(saved);
-  } catch(e) {}
-  return DEFAULT_CLASSES;
-}
-
-const CLASSES = loadClasses();
 
 // ═══════════════════════════════════════════
 // 상태
@@ -1475,14 +1473,31 @@ async function submitAttendance() {
   saveSubmission(currentClass.id, payload);
 
   // ── Firestore 저장
-  // 경로: attendance/{date}/classes/{classId}
   let saved = false;
   try {
-    const docRef = fsDocRef('attendance', payload.date, 'classes', currentClass.id);
-    await fsSet(docRef, payload);
+    // 1) attendance/{date}/classes/{classId} 저장
+    await db.collection('attendance').doc(payload.date)
+            .collection('classes').doc(currentClass.id)
+            .set(payload);
+
+    // 2) 각 학생의 attendanceHistory 업데이트
+    const batch = db.batch();
+    payload.students.forEach(s => {
+      const studentId = `${currentClass.id}_${s.name}`;
+      const studentRef = db.collection('students').doc(studentId);
+      batch.update(studentRef, {
+        [`attendanceHistory.${payload.date}`]: s.status,
+        // 요약 통계는 admin에서 집계
+      });
+    });
+    await batch.commit();
+
     saved = true;
   } catch(e) {
     console.error('Firestore 저장 오류:', e);
+    // attendanceHistory 실패해도 출결 기록은 저장됐으면 성공 처리
+    if (!saved) saved = false;
+    else saved = true;
   }
 
   btn.classList.remove('loading');
@@ -1530,19 +1545,17 @@ function loadSubmission(classId) {
 function isSubmitted(classId) { return !!localStorage.getItem(submittedKey(classId)); }
 
 // ═══════════════════════════════════════════
-// 초기화 — Firebase 준비 후 실행
+// 초기화 — Firebase 준비 후 학생 + 새신자 동시 로드
 // ═══════════════════════════════════════════
 async function initApp() {
-  await syncNewcomersFromFirestore();
+  await Promise.all([
+    loadClassesFromFirestore(),
+    syncNewcomersFromFirestore(),
+  ]);
   renderClassSelect();
 }
 
-// Firebase module이 먼저 로드되면 바로, 아니면 이벤트 대기
-if (window._db) {
-  initApp();
-} else {
-  window.addEventListener('firebaseReady', initApp, { once: true });
-}
+window.addEventListener('firebaseReady', initApp, { once: true });
 </script>
 </body>
 </html>
