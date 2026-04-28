@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5·6학년부 관리자</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+:root {
+  --navy:#1a2744; --navy2:#243358; --gold:#c9a84c; --gold-l:#e8c96a;
+  --cream:#f7f4ee; --white:#ffffff;
+  --present:#2d7d5a; --present-bg:#eaf5f0;
+  --absent:#c0392b;  --absent-bg:#fdf0ef;
+  --border:#e2ddd4;  --text:#1a2744; --sub:#6b7280;
+  --radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;}
+
+/* ── 잠금 ── */
+#lock{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:var(--navy);padding:40px 24px;}
+.lock-icon{width:72px;height:72px;background:rgba(201,168,76,.15);border:1.5px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;margin-bottom:24px;}
+.lock-title{font-size:20px;font-weight:700;color:#fff;margin-bottom:4px;}
+.lock-sub{font-size:13px;color:var(--gold-l);margin-bottom:32px;font-weight:300;}
+.lock-input{width:100%;max-width:320px;background:rgba(255,255,255,.07);border:1.5px solid rgba(201,168,76,.4);border-radius:var(--radius);padding:14px 18px;font-size:16px;color:#fff;font-family:'Noto Sans KR',sans-serif;outline:none;margin-bottom:12px;}
+.lock-input:focus{border-color:var(--gold);}
+.lock-btn{width:100%;max-width:320px;background:var(--gold);color:var(--navy);border:none;border-radius:var(--radius);padding:14px;font-size:15px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;}
+.lock-err{color:#ff6b6b;font-size:13px;margin-top:8px;min-height:20px;}
+
+/* ── 레이아웃 ── */
+#app{display:none;}
+.topbar{background:var(--navy);border-bottom:2px solid var(--gold);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.topbar-title{font-size:15px;font-weight:700;color:#fff;}
+.topbar-sub{font-size:11px;color:var(--gold-l);margin-top:2px;}
+.logout-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:6px 14px;font-size:12px;font-family:'Noto Sans KR',sans-serif;cursor:pointer;}
+
+/* ── 탭 ── */
+.tabs{display:flex;background:#fff;border-bottom:1px solid var(--border);padding:0 20px;gap:0;position:sticky;top:56px;z-index:90;}
+.tab{padding:14px 18px;font-size:13px;font-weight:500;color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;}
+.tab.active{color:var(--navy);border-bottom-color:var(--gold);font-weight:700;}
+
+.page{display:none;padding:20px;}
+.page.active{display:block;}
+
+/* ── 공통 카드 ── */
+.card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:20px;margin-bottom:16px;}
+.card-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.card-title::before{content:'';width:4px;height:16px;background:var(--gold);border-radius:2px;display:inline-block;}
+
+/* ── 요약 통계 ── */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.stat-box{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:14px;text-align:center;}
+.stat-num{font-size:26px;font-weight:700;color:var(--navy);display:block;}
+.stat-num.green{color:var(--present);}
+.stat-num.red{color:var(--absent);}
+.stat-num.gold{color:var(--gold);}
+.stat-lbl{font-size:10px;color:var(--sub);margin-top:3px;display:block;}
+
+/* ── 날짜 선택 ── */
+.date-select-row{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;}
+.date-select-row input{border:1.5px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;background:#fff;outline:none;}
+.btn{padding:8px 16px;border-radius:10px;border:none;font-size:13px;font-weight:500;font-family:'Noto Sans KR',sans-serif;cursor:pointer;transition:all .15s;}
+.btn-primary{background:var(--navy);color:#fff;}
+.btn-primary:active{background:var(--navy2);}
+.btn-outline{background:#fff;border:1.5px solid var(--border);color:var(--sub);}
+
+/* ── 출결 테이블 ── */
+.attend-table{width:100%;border-collapse:collapse;font-size:13px;}
+.attend-table th{background:var(--navy);color:#fff;padding:8px 10px;text-align:left;font-weight:500;}
+.attend-table td{padding:8px 10px;border-bottom:1px solid var(--border);}
+.attend-table tr:last-child td{border-bottom:none;}
+.attend-table tr:hover td{background:#fafaf7;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;}
+.badge-present{background:var(--present-bg);color:var(--present);}
+.badge-absent{background:var(--absent-bg);color:var(--absent);}
+.badge-none{background:#f0f0f0;color:#999;}
+
+/* ── 반별 카드 그리드 ── */
+.class-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+@media(min-width:768px){.class-grid{grid-template-columns:repeat(6,1fr);}}
+.class-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);padding:14px 8px;text-align:center;cursor:pointer;transition:all .15s;}
+.class-card:hover{border-color:var(--navy);}
+.class-card.selected{border-color:var(--navy);background:#f0f2f8;}
+.class-card.grade5{border-top:3px solid #3b82f6;}
+.class-card.grade6{border-top:3px solid var(--gold);}
+.class-card-id{font-size:17px;font-weight:700;color:var(--navy);display:block;}
+.class-card-t{font-size:11px;color:var(--sub);margin-top:3px;display:block;}
+.class-card-stat{font-size:11px;font-weight:700;margin-top:6px;display:block;}
+
+/* ── 학생 관리 ── */
+.student-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.student-row:last-child{border-bottom:none;}
+.student-num{width:24px;height:24px;border-radius:50%;background:var(--cream);color:var(--sub);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.student-name-inp{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:7px 10px;font-size:14px;font-family:'Noto Sans KR',sans-serif;outline:none;}
+.student-name-inp:focus{border-color:var(--navy);}
+.del-btn{background:none;border:none;color:#ccc;font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0;}
+.del-btn:hover{color:var(--absent);}
+.add-student-btn{width:100%;padding:10px;border:1.5px dashed var(--border);border-radius:10px;background:none;font-size:13px;color:var(--sub);font-family:'Noto Sans KR',sans-serif;cursor:pointer;margin-top:8px;}
+.add-student-btn:hover{border-color:var(--navy);color:var(--navy);}
+.save-btn{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;margin-top:12px;}
+
+/* ── 새신자 관리 ── */
+.newcomer-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border);}
+.newcomer-row:last-child{border-bottom:none;}
+.nc-name{font-size:15px;font-weight:500;flex:1;}
+.nc-grade{font-size:11px;color:var(--sub);}
+.week-select{border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;cursor:pointer;}
+.week-badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.w1{background:var(--present-bg);color:var(--present);}
+.w2{background:#fff8e1;color:#f9a825;}
+.w3{background:#fff3e0;color:#e65100;}
+.w4{background:#e8f0fe;color:#1a5bbf;}
+.nc-del-btn{background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:0 4px;}
+.nc-del-btn:hover{color:var(--absent);}
+
+/* ── 주간보고서 ── */
+.report-section{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+.report-title{font-size:18px;font-weight:700;color:var(--navy);text-align:center;margin-bottom:4px;}
+.report-date{font-size:12px;color:var(--sub);text-align:center;margin-bottom:16px;}
+.report-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;}
+.report-table th{background:var(--navy);color:#fff;padding:6px 8px;text-align:center;}
+.report-table td{padding:6px 8px;border:1px solid var(--border);text-align:center;}
+.report-table tr:nth-child(even) td{background:#fafaf7;}
+.copy-btn{width:100%;padding:12px;background:var(--gold);color:var(--navy);border:none;border-radius:10px;font-size:14px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;}
+
+/* ── 로딩 ── */
+.loading{text-align:center;padding:40px;color:var(--sub);font-size:14px;}
+.empty{text-align:center;padding:32px;color:var(--sub);font-size:13px;}
+
+/* ── 섹션 제목 ── */
+.sec-title{font-size:12px;font-weight:500;color:var(--sub);letter-spacing:.5px;margin-bottom:10px;padding-left:2px;}
+</style>
+</head>
+<body>
+
+<!-- 잠금 화면 -->
+<div id="lock">
+  <div class="lock-icon">🔐</div>
+  <div class="lock-title">5·6학년부 관리자</div>
+  <div class="lock-sub">서기 전용 페이지입니다</div>
+  <input class="lock-input" type="password" id="pw" placeholder="관리자 비밀번호" autocomplete="off">
+  <button class="lock-btn" onclick="checkPw()">입력</button>
+  <div class="lock-err" id="pw-err"></div>
+</div>
+
+<!-- 메인 앱 -->
+<div id="app">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">5·6학년부 관리자</div>
+      <div class="topbar-sub" id="today-label"></div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">로그아웃</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('dashboard')">📊 출결현황</div>
+    <div class="tab" onclick="switchTab('students')">👥 학생관리</div>
+    <div class="tab" onclick="switchTab('newcomers')">🌱 새신자</div>
+    <div class="tab" onclick="switchTab('report')">📋 주간보고서</div>
+  </div>
+
+  <!-- ① 출결 현황 -->
+  <div id="page-dashboard" class="page active">
+    <div class="date-select-row">
+      <input type="date" id="sel-date">
+      <button class="btn btn-primary" onclick="loadDashboard()">조회</button>
+      <button class="btn btn-outline" onclick="setToday()">오늘</button>
+    </div>
+
+    <!-- 전체 요약 -->
+    <div class="stat-row" id="summary-stats">
+      <div class="stat-box"><span class="stat-num" id="s-total">-</span><span class="stat-lbl">전체 재적</span></div>
+      <div class="stat-box"><span class="stat-num green" id="s-present">-</span><span class="stat-lbl">출석</span></div>
+      <div class="stat-box"><span class="stat-num red" id="s-absent">-</span><span class="stat-lbl">결석</span></div>
+      <div class="stat-box"><span class="stat-num gold" id="s-rate">-</span><span class="stat-lbl">출석률</span></div>
+    </div>
+
+    <!-- 반별 현황 -->
+    <div class="card">
+      <div class="card-title">반별 출결 현황</div>
+      <div id="class-overview" class="loading">날짜를 선택하고 조회해주세요</div>
+    </div>
+
+    <!-- 결석 학생 목록 -->
+    <div class="card">
+      <div class="card-title">결석 학생 목록</div>
+      <div id="absent-list" class="empty">-</div>
+    </div>
+  </div>
+
+  <!-- ② 학생 관리 -->
+  <div id="page-students" class="page">
+    <p class="sec-title">반을 선택하면 학생 명단을 수정할 수 있어요</p>
+    <div class="sec-title">5학년</div>
+    <div class="class-grid" id="sg-grade5"></div>
+    <div class="sec-title">6학년</div>
+    <div class="class-grid" id="sg-grade6"></div>
+
+    <div class="card" id="student-edit-card" style="display:none;">
+      <div class="card-title" id="edit-card-title">학생 명단</div>
+      <div id="student-list-edit"></div>
+      <button class="add-student-btn" onclick="addStudentRow()">+ 학생 추가</button>
+      <button class="save-btn" onclick="saveStudents()">저장하기</button>
+    </div>
+  </div>
+
+  <!-- ③ 새신자 관리 -->
+  <div id="page-newcomers" class="page">
+    <div class="card">
+      <div class="card-title">올해 새신자 명단</div>
+      <div id="nc-list" class="loading">불러오는 중...</div>
+      <button class="add-student-btn" onclick="addNewcomerRow()" style="margin-top:12px;">+ 새신자 추가</button>
+      <button class="save-btn" onclick="saveNewcomers()">저장하기</button>
+    </div>
+  </div>
+
+  <!-- ④ 주간보고서 -->
+  <div id="page-report" class="page">
+    <div class="date-select-row">
+      <input type="date" id="rep-date">
+      <button class="btn btn-primary" onclick="loadReport()">보고서 생성</button>
+      <button class="btn btn-outline" onclick="setTodayReport()">오늘</button>
+    </div>
+    <div id="report-content" class="empty">날짜를 선택하고 보고서 생성을 눌러주세요</div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+// ── Firebase 초기화
+const firebaseConfig = {
+  apiKey: "AIzaSyCLN7Qfk_Ex5VA2iP9CkvO71O8x3pSUhj0",
+  authDomain: "church-56.firebaseapp.com",
+  projectId: "church-56",
+  storageBucket: "church-56.firebasestorage.app",
+  messagingSenderId: "646807576724",
+  appId: "1:646807576724:web:42e27698c73ab2cf321481"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ── 설정
+const ADMIN_PW = '2026';  // ← 관리자 비밀번호
+
+// ── 기본 학생 데이터
+const DEFAULT_CLASSES = {
+  '5학년': [
+    { id:'5-1', teacher:'유순자', students:['최세아','임서현','박지윤','홍아윤','한하영','심하원','심예나','이지우','김나형','이서빈'] },
+    { id:'5-2', teacher:'전주희', students:['김희우','최하진','유가나','김하린','김예나','김하람','김재희','이지아','성시현','이예서'] },
+    { id:'5-3', teacher:'박찬미', students:['유하나','김주아','김민아','김라율','권소율','박정하','문서윤','안유정','선예진','나시온'] },
+    { id:'5-4', teacher:'김종성', students:['이다엘','임승한','안정현','정시원','곽리온','김예담','백시연'] },
+    { id:'5-5', teacher:'최영길', students:['민예준','정인우','홍은권','이호진','권지훈','임가온','김주원','김찬희','홍서준','김민성','김민준','김세윤','허준혁','이주호','임호'] },
+    { id:'5-6', teacher:'곽승재', students:['석하람','정재아','주시우','구도훈','전제한'] },
+  ],
+  '6학년': [
+    { id:'6-1', teacher:'임형옥', students:['이루리','주봄이','변서연','김주아','송채원','안규민','한지아','노정윤','최서현','곡실링'] },
+    { id:'6-2', teacher:'공윤선', students:['박하온','송지윤','박한별','신소율','황서윤','채민경','김서연','이선유'] },
+    { id:'6-3', teacher:'임하은', students:['김은채','최은하','김민서','권정서','박재인','조세빈','문채은','김채이','유아정','유도경'] },
+    { id:'6-4', teacher:'이상균', students:['박성민','한민규','유승민','이창현','김도윤','한율','손연우','조유안','김지환'] },
+    { id:'6-5', teacher:'전종곤', students:['방승호','양성욱','정세환','이네모','김하윤','박하음','윤주원','유민준','안준영','박지운','윤정담'] },
+    { id:'6-6', teacher:'신종영', students:['김종윤','김지호','정서원','이솔','이용준','허준석','최인평','조은수','임태호','임도윤'] },
+  ],
+};
+
+function loadClasses() {
+  try { const s = localStorage.getItem('classData'); if(s) return JSON.parse(s); } catch(e){}
+  return DEFAULT_CLASSES;
+}
+
+// ── 상태
+let currentEditClass = null;
+let classData = loadClasses();
+let newcomerData = [];
+
+// ── 잠금
+function checkPw() {
+  const v = document.getElementById('pw').value;
+  if (v === ADMIN_PW) {
+    document.getElementById('lock').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    initApp();
+  } else {
+    document.getElementById('pw-err').textContent = '비밀번호가 올바르지 않습니다.';
+    document.getElementById('pw').value = '';
+    setTimeout(() => document.getElementById('pw-err').textContent = '', 2500);
+  }
+}
+document.getElementById('pw').addEventListener('keydown', e => { if(e.key==='Enter') checkPw(); });
+
+function doLogout() {
+  document.getElementById('lock').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('pw').value = '';
+}
+
+// ── 초기화
+async function initApp() {
+  const now = new Date();
+  const days = ['일','월','화','수','목','금','토'];
+  document.getElementById('today-label').textContent =
+    `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
+
+  const todayStr = toDateStr(now);
+  document.getElementById('sel-date').value = todayStr;
+  document.getElementById('rep-date').value = todayStr;
+
+  renderStudentClassGrid();
+  await loadNewcomerList();
+  await loadDashboard();
+}
+
+function toDateStr(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ── 탭 전환
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['dashboard','students','newcomers','report'];
+    t.className = 'tab' + (names[i]===name ? ' active' : '');
+  });
+  document.querySelectorAll('.page').forEach(p => p.className='page');
+  document.getElementById('page-'+name).className = 'page active';
+}
+
+// ══════════════════════════════════
+// ① 출결 현황
+// ══════════════════════════════════
+function setToday() {
+  document.getElementById('sel-date').value = toDateStr(new Date());
+  loadDashboard();
+}
+
+async function loadDashboard() {
+  const date = document.getElementById('sel-date').value;
+  if (!date) return;
+
+  document.getElementById('class-overview').innerHTML = '<div class="loading">불러오는 중...</div>';
+  document.getElementById('absent-list').innerHTML = '<div class="loading">...</div>';
+
+  // 모든 반 데이터 로드
+  const allClasses = [...DEFAULT_CLASSES['5학년'], ...DEFAULT_CLASSES['6학년']];
+  const results = [];
+
+  for (const cls of allClasses) {
+    try {
+      const snap = await db.collection('attendance').doc(date).collection('classes').doc(cls.id).get();
+      if (snap.exists) {
+        results.push({ cls, data: snap.data() });
+      } else {
+        results.push({ cls, data: null });
+      }
+    } catch(e) { results.push({ cls, data: null }); }
+  }
+
+  // 전체 통계
+  let totalReg = 0, totalPresent = 0, totalAbsent = 0;
+  results.forEach(r => {
+    if (!r.data) return;
+    r.data.students.forEach(s => {
+      totalReg++;
+      if (s.status === 'present') totalPresent++;
+      else if (s.status === 'absent') totalAbsent++;
+    });
+  });
+  const rate = totalReg > 0 ? Math.round(totalPresent/totalReg*100) : 0;
+  document.getElementById('s-total').textContent = totalReg;
+  document.getElementById('s-present').textContent = totalPresent;
+  document.getElementById('s-absent').textContent = totalAbsent;
+  document.getElementById('s-rate').textContent = rate + '%';
+
+  // 반별 현황 테이블
+  const hasData = results.some(r => r.data);
+  if (!hasData) {
+    document.getElementById('class-overview').innerHTML = `<div class="empty">${date} 출결 데이터가 없습니다</div>`;
+    document.getElementById('absent-list').innerHTML = '<div class="empty">-</div>';
+    return;
+  }
+
+  let tableHtml = `<table class="attend-table">
+    <tr><th>반</th><th>담임</th><th>재적</th><th>출석</th><th>결석</th><th>출석률</th></tr>`;
+  const absentStudents = [];
+
+  results.forEach(r => {
+    if (!r.data) {
+      tableHtml += `<tr><td>${r.cls.id}</td><td>${r.cls.teacher}</td><td colspan="4" style="color:#ccc;text-align:center;">미제출</td></tr>`;
+      return;
+    }
+    const p = r.data.students.filter(s=>s.status==='present').length;
+    const a = r.data.students.filter(s=>s.status==='absent').length;
+    const total = r.data.students.length;
+    const rt = total > 0 ? Math.round(p/total*100) : 0;
+    tableHtml += `<tr>
+      <td><strong>${r.cls.id}</strong></td>
+      <td>${r.cls.teacher}</td>
+      <td>${total}</td>
+      <td style="color:var(--present);font-weight:700">${p}</td>
+      <td style="color:var(--absent);font-weight:700">${a}</td>
+      <td>${rt}%</td>
+    </tr>`;
+    r.data.students.filter(s=>s.status==='absent').forEach(s => {
+      absentStudents.push({ class: r.cls.id, ...s });
+    });
+  });
+  tableHtml += '</table>';
+  document.getElementById('class-overview').innerHTML = tableHtml;
+
+  // 결석 목록
+  if (absentStudents.length === 0) {
+    document.getElementById('absent-list').innerHTML = '<div class="empty">결석 학생이 없습니다 🎉</div>';
+  } else {
+    let aHtml = `<table class="attend-table">
+      <tr><th>반</th><th>이름</th><th>심방방법</th><th>결석사유</th><th>메모</th></tr>`;
+    absentStudents.forEach(s => {
+      aHtml += `<tr>
+        <td>${s.class}</td>
+        <td><strong>${s.name}</strong></td>
+        <td>${s.contactMethod||'-'}</td>
+        <td>${s.reason||'-'}</td>
+        <td>${s.memo||'-'}</td>
+      </tr>`;
+    });
+    aHtml += '</table>';
+    document.getElementById('absent-list').innerHTML = aHtml;
+  }
+}
+
+// ══════════════════════════════════
+// ② 학생 관리
+// ══════════════════════════════════
+function renderStudentClassGrid() {
+  ['5학년','6학년'].forEach((grade, gi) => {
+    const gridId = gi===0 ? 'sg-grade5' : 'sg-grade6';
+    const grid = document.getElementById(gridId);
+    grid.innerHTML = '';
+    classData[grade].forEach(cls => {
+      const card = document.createElement('div');
+      card.className = 'class-card ' + (gi===0?'grade5':'grade6');
+      card.innerHTML = `<span class="class-card-id">${cls.id}</span><span class="class-card-t">${cls.teacher}T</span><span class="class-card-stat" style="color:var(--sub)">${cls.students.length}명</span>`;
+      card.onclick = () => openStudentEdit(cls, grade);
+      grid.appendChild(card);
+    });
+  });
+}
+
+function openStudentEdit(cls, grade) {
+  currentEditClass = { cls, grade };
+  document.getElementById('student-edit-card').style.display = 'block';
+  document.getElementById('edit-card-title').textContent = `${cls.id}반 학생 명단 (${cls.teacher} 선생님)`;
+
+  const list = document.getElementById('student-list-edit');
+  list.innerHTML = '';
+  cls.students.forEach((name, i) => addStudentRow(name, i+1));
+
+  document.getElementById('student-edit-card').scrollIntoView({ behavior:'smooth' });
+}
+
+function addStudentRow(name='', num=null) {
+  const list = document.getElementById('student-list-edit');
+  const idx = num || list.children.length + 1;
+  const row = document.createElement('div');
+  row.className = 'student-row';
+  row.innerHTML = `
+    <div class="student-num">${idx}</div>
+    <input class="student-name-inp" type="text" value="${name}" placeholder="이름 입력">
+    <button class="del-btn" onclick="this.parentElement.remove();reindexStudents()">✕</button>
+  `;
+  list.appendChild(row);
+}
+
+function reindexStudents() {
+  document.querySelectorAll('#student-list-edit .student-num').forEach((el,i) => {
+    el.textContent = i+1;
+  });
+}
+
+async function saveStudents() {
+  if (!currentEditClass) return;
+  const inputs = document.querySelectorAll('#student-list-edit .student-name-inp');
+  const students = Array.from(inputs).map(i=>i.value.trim()).filter(Boolean);
+
+  const { cls, grade } = currentEditClass;
+  cls.students = students;
+
+  // localStorage 저장
+  localStorage.setItem('classData', JSON.stringify(classData));
+
+  // Firestore 저장 (출석앱과 공유)
+  try {
+    await db.collection('meta').doc('classData').set({ data: classData, updatedAt: new Date().toISOString() });
+  } catch(e) { console.error(e); }
+
+  renderStudentClassGrid();
+  alert(`${cls.id}반 저장 완료! (${students.length}명)`);
+}
+
+// ══════════════════════════════════
+// ③ 새신자 관리
+// ══════════════════════════════════
+const DEFAULT_NEWCOMERS = [
+  { name:'이하랑', grade:'5학년', week:2, graduated:false, guide:'', memo:'' },
+  { name:'이서빈', grade:'5학년', week:3, graduated:false, guide:'', memo:'' },
+  { name:'이예서', grade:'5학년', week:3, graduated:false, guide:'', memo:'' },
+  { name:'양효리', grade:'6학년', week:1, graduated:false, guide:'', memo:'' },
+  { name:'박지운', grade:'6학년', week:4, graduated:true,  guide:'', memo:'' },
+  { name:'윤정담', grade:'6학년', week:2, graduated:false, guide:'', memo:'' },
+];
+
+async function loadNewcomerList() {
+  try {
+    const snap = await db.collection('meta').doc('newcomers').get();
+    newcomerData = snap.exists ? snap.data().list : JSON.parse(JSON.stringify(DEFAULT_NEWCOMERS));
+  } catch(e) {
+    newcomerData = JSON.parse(JSON.stringify(DEFAULT_NEWCOMERS));
+  }
+  renderNewcomerList();
+}
+
+function renderNewcomerList() {
+  const list = document.getElementById('nc-list');
+  if (!newcomerData.length) { list.innerHTML = '<div class="empty">새신자가 없습니다</div>'; return; }
+
+  list.innerHTML = '';
+  newcomerData.forEach((nc, idx) => {
+    const row = document.createElement('div');
+    row.className = 'newcomer-row';
+    const wClass = nc.graduated ? 'w4' : ['','w1','w2','w3'][nc.week] || 'w1';
+    const wLabel = nc.graduated ? '등반완료' : nc.week+'주차';
+    row.innerHTML = `
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="nc-name">${nc.name}</span>
+          <span class="nc-grade">${nc.grade||''}</span>
+        </div>
+        <div style="margin-top:6px;display:flex;align-items:center;gap:8px;">
+          <span class="week-badge ${wClass}">${wLabel}</span>
+          <select class="week-select" onchange="updateNcWeek(${idx},this.value)">
+            <option value="1" ${nc.week===1&&!nc.graduated?'selected':''}>1주차</option>
+            <option value="2" ${nc.week===2&&!nc.graduated?'selected':''}>2주차</option>
+            <option value="3" ${nc.week===3&&!nc.graduated?'selected':''}>3주차</option>
+            <option value="4" ${nc.graduated?'selected':''}>등반완료</option>
+          </select>
+          <input type="text" class="student-name-inp" style="max-width:120px;padding:4px 8px;font-size:12px;"
+            placeholder="인도자" value="${nc.guide||''}" oninput="newcomerData[${idx}].guide=this.value">
+        </div>
+      </div>
+      <button class="nc-del-btn" onclick="deleteNewcomer(${idx})">✕</button>
+    `;
+    list.appendChild(row);
+  });
+}
+
+function updateNcWeek(idx, val) {
+  const graduated = val === '4';
+  newcomerData[idx].week = graduated ? 4 : parseInt(val);
+  newcomerData[idx].graduated = graduated;
+  renderNewcomerList();
+}
+
+function deleteNewcomer(idx) {
+  if (!confirm(`${newcomerData[idx].name}을 삭제할까요?`)) return;
+  newcomerData.splice(idx, 1);
+  renderNewcomerList();
+}
+
+function addNewcomerRow() {
+  const name = prompt('새신자 이름:');
+  if (!name || !name.trim()) return;
+  const grade = prompt('학년 (예: 5학년):') || '';
+  newcomerData.push({ name: name.trim(), grade, week: 1, graduated: false, guide: '', memo: '' });
+  renderNewcomerList();
+}
+
+async function saveNewcomers() {
+  try {
+    await db.collection('meta').doc('newcomers').set({ list: newcomerData, updatedAt: new Date().toISOString() });
+    localStorage.setItem('newcomerData', JSON.stringify(newcomerData));
+    alert('새신자 명단 저장 완료!');
+  } catch(e) {
+    alert('저장 오류: ' + e.message);
+  }
+}
+
+// ══════════════════════════════════
+// ④ 주간보고서
+// ══════════════════════════════════
+function setTodayReport() {
+  document.getElementById('rep-date').value = toDateStr(new Date());
+}
+
+async function loadReport() {
+  const date = document.getElementById('rep-date').value;
+  if (!date) return;
+
+  document.getElementById('report-content').innerHTML = '<div class="loading">보고서 생성 중...</div>';
+
+  const allClasses = [...DEFAULT_CLASSES['5학년'], ...DEFAULT_CLASSES['6학년']];
+  const results = [];
+
+  for (const cls of allClasses) {
+    try {
+      const snap = await db.collection('attendance').doc(date).collection('classes').doc(cls.id).get();
+      results.push({ cls, data: snap.exists ? snap.data() : null });
+    } catch(e) { results.push({ cls, data: null }); }
+  }
+
+  const [y, m, d] = date.split('-');
+  const weekNum = Math.ceil(parseInt(d)/7);
+
+  // 5학년 / 6학년 분리
+  const grade5 = results.filter(r => r.cls.id.startsWith('5'));
+  const grade6 = results.filter(r => r.cls.id.startsWith('6'));
+
+  function buildRows(list) {
+    return list.map(r => {
+      if (!r.data) return `<tr><td>${r.cls.id}</td><td>${r.cls.teacher}</td><td>-</td><td>-</td><td>-</td><td colspan="2" style="color:#ccc">미제출</td></tr>`;
+      const p = r.data.students.filter(s=>s.status==='present').length;
+      const a = r.data.students.filter(s=>s.status==='absent').length;
+      const total = r.data.students.length;
+      return `<tr><td><b>${r.cls.id}</b></td><td>${r.cls.teacher}</td><td>${total}</td><td>${total}</td><td style="color:var(--present);font-weight:700">${p}</td><td style="color:var(--absent)">${a}</td><td>-</td></tr>`;
+    }).join('');
+  }
+
+  function gradeTotal(list) {
+    let reg=0, pre=0, abs=0;
+    list.forEach(r => {
+      if (!r.data) return;
+      reg += r.data.students.length;
+      pre += r.data.students.filter(s=>s.status==='present').length;
+      abs += r.data.students.filter(s=>s.status==='absent').length;
+    });
+    return { reg, pre, abs };
+  }
+
+  const t5 = gradeTotal(grade5);
+  const t6 = gradeTotal(grade6);
+
+  const html = `
+    <div class="report-section">
+      <div class="report-title">5·6학년부서 주간 보고서</div>
+      <div class="report-date">${y}년 ${parseInt(m)}월 ${parseInt(d)}일 · ${parseInt(m)}월 ${weekNum}주차</div>
+
+      <table class="report-table">
+        <tr><th>반</th><th>담임</th><th>교사재적</th><th>학생재적</th><th>출석</th><th>결석</th><th>등반</th></tr>
+        <tr style="background:#f0f4f8"><td colspan="7" style="font-weight:700;color:var(--navy);padding:6px 8px;">5학년</td></tr>
+        ${buildRows(grade5)}
+        <tr style="background:#e8f0fe"><td colspan="3"><b>5학년 계</b></td><td><b>${t5.reg}</b></td><td style="color:var(--present);font-weight:700">${t5.pre}</td><td style="color:var(--absent)">${t5.abs}</td><td>-</td></tr>
+        <tr style="background:#f0f4f8"><td colspan="7" style="font-weight:700;color:var(--navy);padding:6px 8px;">6학년</td></tr>
+        ${buildRows(grade6)}
+        <tr style="background:#e8f0fe"><td colspan="3"><b>6학년 계</b></td><td><b>${t6.reg}</b></td><td style="color:var(--present);font-weight:700">${t6.pre}</td><td style="color:var(--absent)">${t6.abs}</td><td>-</td></tr>
+        <tr style="background:var(--navy);color:#fff"><td colspan="3"><b>총계</b></td><td><b>${t5.reg+t6.reg}</b></td><td style="font-weight:700">${t5.pre+t6.pre}</td><td>${t5.abs+t6.abs}</td><td>-</td></tr>
+      </table>
+
+      <button class="copy-btn" onclick="copyReport()">📋 텍스트 복사</button>
+    </div>
+  `;
+  document.getElementById('report-content').innerHTML = html;
+}
+
+function copyReport() {
+  const date = document.getElementById('rep-date').value;
+  const [y,m,d] = date.split('-');
+  const weekNum = Math.ceil(parseInt(d)/7);
+  const text = `5·6학년부서 주간보고서 (${y}년 ${parseInt(m)}월 ${weekNum}주차)\n보고서를 확인해주세요.`;
+  navigator.clipboard.writeText(text).then(() => alert('복사됐습니다!'));
+}
+</script>
+</body>
+</html>
