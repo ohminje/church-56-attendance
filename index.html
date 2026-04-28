@@ -716,11 +716,9 @@
 
 
 <script type="module">
-// ═══════════════════════════════════════════
-// Firebase 초기화
-// ═══════════════════════════════════════════
+// Firebase 초기화 → window에 db 등록
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCLN7Qfk_Ex5VA2iP9CkvO71O8x3pSUhj0",
@@ -734,12 +732,29 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 
+// db와 Firestore 함수들을 window에 등록 (일반 script에서 사용)
+window._db      = db;
+window._doc     = doc;
+window._setDoc  = setDoc;
+window._getDoc  = getDoc;
+
+// Firebase 준비 완료 이벤트 발생
+window.dispatchEvent(new Event('firebaseReady'));
+</script>
+
+<script>
 // ═══════════════════════════════════════════
 // 설정값
 // ═══════════════════════════════════════════
 const CONFIG = {
   password: '56부2026',   // ← 비밀번호 여기서 변경
 };
+
+// Firestore 헬퍼 (window._db 준비 후 사용)
+function getDb()     { return window._db; }
+function fsDoc(...a) { return window._doc(...a); }
+function fsSet(...a) { return window._setDoc(...a); }
+function fsGet(...a) { return window._getDoc(...a); }
 
 // ═══════════════════════════════════════════
 // 학생 데이터 (관리자 페이지에서 수정되면 localStorage에 저장됨)
@@ -788,17 +803,17 @@ function loadNewcomers() {
 
 function saveNewcomers(list) {
   localStorage.setItem('newcomerData', JSON.stringify(list));
-  // Firestore 동기화 (newcomers 컬렉션)
+  // Firestore 동기화
   try {
-    const docRef = doc(db, 'meta', 'newcomers');
-    setDoc(docRef, { list, updatedAt: new Date().toISOString() });
+    const docRef = fsDoc(getDb(), 'meta', 'newcomers');
+    fsSet(docRef, { list, updatedAt: new Date().toISOString() });
   } catch(e) { console.error('newcomer sync 오류:', e); }
 }
 
 async function syncNewcomersFromFirestore() {
   try {
-    const docRef  = doc(db, 'meta', 'newcomers');
-    const snap    = await getDoc(docRef);
+    const docRef = fsDoc(getDb(), 'meta', 'newcomers');
+    const snap   = await fsGet(docRef);
     if (snap.exists()) {
       const remote = snap.data().list;
       localStorage.setItem('newcomerData', JSON.stringify(remote));
@@ -1455,14 +1470,10 @@ async function submitAttendance() {
   saveSubmission(currentClass.id, payload);
 
   // ── Firestore 저장
-  // 경로: attendance/{날짜}/{반ID}
-  // 새신자는 attendance/{날짜}/새신자 로 저장
   let saved = false;
   try {
-    const dateKey = payload.date;
-    const classId = currentClass.id;
-    const docRef  = doc(db, 'attendance', dateKey, 'classes', classId);
-    await setDoc(docRef, payload);
+    const docRef = fsDoc(getDb(), 'attendance', payload.date, 'classes', currentClass.id);
+    await fsSet(docRef, payload);
     saved = true;
   } catch(e) {
     console.error('Firestore 저장 오류:', e);
@@ -1513,12 +1524,19 @@ function loadSubmission(classId) {
 function isSubmitted(classId) { return !!localStorage.getItem(submittedKey(classId)); }
 
 // ═══════════════════════════════════════════
-// 초기화 — Firestore에서 최신 새신자 데이터 동기화 후 렌더
+// 초기화 — Firebase 준비 후 실행
 // ═══════════════════════════════════════════
-(async () => {
+async function initApp() {
   await syncNewcomersFromFirestore();
   renderClassSelect();
-})();
+}
+
+// Firebase module이 먼저 로드되면 바로, 아니면 이벤트 대기
+if (window._db) {
+  initApp();
+} else {
+  window.addEventListener('firebaseReady', initApp, { once: true });
+}
 </script>
 </body>
 </html>
