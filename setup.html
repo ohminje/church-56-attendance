@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>DB 초기 설정</title>
+<style>
+body { font-family: sans-serif; max-width: 600px; margin: 60px auto; padding: 20px; background: #f5f5f5; }
+h2 { color: #1a2744; margin-bottom: 8px; }
+p  { color: #666; font-size: 14px; margin-bottom: 24px; }
+button { background: #1a2744; color: #fff; border: none; border-radius: 10px; padding: 14px 32px; font-size: 15px; cursor: pointer; width: 100%; }
+button:disabled { background: #aaa; cursor: not-allowed; }
+#log { margin-top: 24px; background: #fff; border-radius: 10px; padding: 16px; font-size: 13px; line-height: 2; max-height: 400px; overflow-y: auto; border: 1px solid #e0e0e0; display: none; }
+.ok  { color: #2d7d5a; }
+.err { color: #c0392b; }
+.info{ color: #1a5bbf; font-weight: 700; }
+</style>
+</head>
+<body>
+<h2>🔧 Firestore 학생 DB 초기 설정</h2>
+<p>버튼을 누르면 전체 학생 데이터가 Firestore에 등록됩니다.<br>이미 등록된 학생은 덮어쓰지 않습니다. <b>한 번만 실행하세요.</b></p>
+<button id="run-btn" onclick="runSetup()">학생 DB 등록 시작</button>
+<div id="log"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyCLN7Qfk_Ex5VA2iP9CkvO71O8x3pSUhj0",
+  authDomain: "church-56.firebaseapp.com",
+  projectId: "church-56",
+  storageBucket: "church-56.firebasestorage.app",
+  messagingSenderId: "646807576724",
+  appId: "1:646807576724:web:42e27698c73ab2cf321481"
+});
+const db = firebase.firestore();
+
+// ── 전체 학생 데이터
+const STUDENTS = [
+  // 5-1 (유순자)
+  { name:'최세아',  grade:'5학년', class:'5-1', teacher:'유순자', school:'마포성원초' },
+  { name:'임서현',  grade:'5학년', class:'5-1', teacher:'유순자', school:'상신' },
+  { name:'박지윤',  grade:'5학년', class:'5-1', teacher:'유순자', school:'역촌' },
+  { name:'홍아윤',  grade:'5학년', class:'5-1', teacher:'유순자', school:'역촌' },
+  { name:'한하영',  grade:'5학년', class:'5-1', teacher:'유순자', school:'신정' },
+  { name:'심하원',  grade:'5학년', class:'5-1', teacher:'유순자', school:'은명' },
+  { name:'심예나',  grade:'5학년', class:'5-1', teacher:'유순자', school:'은명' },
+  { name:'이지우',  grade:'5학년', class:'5-1', teacher:'유순자', school:'은명' },
+  { name:'김나형',  grade:'5학년', class:'5-1', teacher:'유순자', school:'구현' },
+  { name:'이서빈',  grade:'5학년', class:'5-1', teacher:'유순자', school:'은명' },
+  // 5-2 (전주희)
+  { name:'김희우',  grade:'5학년', class:'5-2', teacher:'전주희', school:'구산' },
+  { name:'최하진',  grade:'5학년', class:'5-2', teacher:'전주희', school:'예일' },
+  { name:'유가나',  grade:'5학년', class:'5-2', teacher:'전주희', school:'대은' },
+  { name:'김하린',  grade:'5학년', class:'5-2', teacher:'전주희', school:'역촌' },
+  { name:'김예나',  grade:'5학년', class:'5-2', teacher:'전주희', school:'은명' },
+  { name:'김하람',  grade:'5학년', class:'5-2', teacher:'전주희', school:'북가좌' },
+  { name:'김재희',  grade:'5학년', class:'5-2', teacher:'전주희', school:'은명' },
+  { name:'이지아',  grade:'5학년', class:'5-2', teacher:'전주희', school:'' },
+  { name:'성시현',  grade:'5학년', class:'5-2', teacher:'전주희', school:'역촌' },
+  { name:'이예서',  grade:'5학년', class:'5-2', teacher:'전주희', school:'예일' },
+  // 5-3 (박찬미)
+  { name:'유하나',  grade:'5학년', class:'5-3', teacher:'박찬미', school:'고양동산초' },
+  { name:'김주아',  grade:'5학년', class:'5-3', teacher:'박찬미', school:'상신' },
+  { name:'김민아',  grade:'5학년', class:'5-3', teacher:'박찬미', school:'역촌' },
+  { name:'김라율',  grade:'5학년', class:'5-3', teacher:'박찬미', school:'역촌' },
+  { name:'권소율',  grade:'5학년', class:'5-3', teacher:'박찬미', school:'삼송' },
+  { name:'박정하',  grade:'5학년', class:'5-3', teacher:'박찬미', school:'상신' },
+  { name:'문서윤',  grade:'5학년', class:'5-3', teacher:'박찬미', school:'상신' },
+  { name:'안유정',  grade:'5학년', class:'5-3', teacher:'박찬미', school:'역촌' },
+  { name:'선예진',  grade:'5학년', class:'5-3', teacher:'박찬미', school:'은명' },
+  { name:'나시온',  grade:'5학년', class:'5-3', teacher:'박찬미', school:'옥동' },
+  // 5-4 (김종성)
+  { name:'이다엘',  grade:'5학년', class:'5-4', teacher:'김종성', school:'녹번' },
+  { name:'임승한',  grade:'5학년', class:'5-4', teacher:'김종성', school:'역촌' },
+  { name:'안정현',  grade:'5학년', class:'5-4', teacher:'김종성', school:'어울' },
+  { name:'정시원',  grade:'5학년', class:'5-4', teacher:'김종성', school:'상신' },
+  { name:'곽리온',  grade:'5학년', class:'5-4', teacher:'김종성', school:'역촌' },
+  { name:'김예담',  grade:'5학년', class:'5-4', teacher:'김종성', school:'신원' },
+  { name:'백시연',  grade:'5학년', class:'5-4', teacher:'김종성', school:'은명' },
+  // 5-5 (최영길)
+  { name:'민예준',  grade:'5학년', class:'5-5', teacher:'최영길', school:'역촌' },
+  { name:'정인우',  grade:'5학년', class:'5-5', teacher:'최영길', school:'역촌' },
+  { name:'홍은권',  grade:'5학년', class:'5-5', teacher:'최영길', school:'역촌' },
+  { name:'이호진',  grade:'5학년', class:'5-5', teacher:'최영길', school:'가재울' },
+  { name:'권지훈',  grade:'5학년', class:'5-5', teacher:'최영길', school:'역촌' },
+  { name:'임가온',  grade:'5학년', class:'5-5', teacher:'최영길', school:'은명' },
+  { name:'김주원',  grade:'5학년', class:'5-5', teacher:'최영길', school:'은명' },
+  { name:'김찬희',  grade:'5학년', class:'5-5', teacher:'최영길', school:'구산' },
+  { name:'홍서준',  grade:'5학년', class:'5-5', teacher:'최영길', school:'구산' },
+  { name:'김민성',  grade:'5학년', class:'5-5', teacher:'최영길', school:'역촌' },
+  { name:'김민준',  grade:'5학년', class:'5-5', teacher:'최영길', school:'역촌' },
+  { name:'김세윤',  grade:'5학년', class:'5-5', teacher:'최영길', school:'역촌' },
+  { name:'허준혁',  grade:'5학년', class:'5-5', teacher:'최영길', school:'역촌' },
+  { name:'이주호',  grade:'5학년', class:'5-5', teacher:'최영길', school:'역촌' },
+  { name:'임호',    grade:'5학년', class:'5-5', teacher:'최영길', school:'역촌' },
+  // 5-6 (곽승재)
+  { name:'석하람',  grade:'5학년', class:'5-6', teacher:'곽승재', school:'지효' },
+  { name:'정재아',  grade:'5학년', class:'5-6', teacher:'곽승재', school:'상신' },
+  { name:'주시우',  grade:'5학년', class:'5-6', teacher:'곽승재', school:'상신' },
+  { name:'구도훈',  grade:'5학년', class:'5-6', teacher:'곽승재', school:'삼송' },
+  { name:'전제한',  grade:'5학년', class:'5-6', teacher:'곽승재', school:'' },
+  // 6-1 (임형옥)
+  { name:'이루리',  grade:'6학년', class:'6-1', teacher:'임형옥', school:'상신초' },
+  { name:'주봄이',  grade:'6학년', class:'6-1', teacher:'임형옥', school:'상신초' },
+  { name:'변서연',  grade:'6학년', class:'6-1', teacher:'임형옥', school:'구산' },
+  { name:'김주아',  grade:'6학년', class:'6-1', teacher:'임형옥', school:'역촌' },
+  { name:'송채원',  grade:'6학년', class:'6-1', teacher:'임형옥', school:'예일' },
+  { name:'안규민',  grade:'6학년', class:'6-1', teacher:'임형옥', school:'예일' },
+  { name:'한지아',  grade:'6학년', class:'6-1', teacher:'임형옥', school:'상신' },
+  { name:'노정윤',  grade:'6학년', class:'6-1', teacher:'임형옥', school:'' },
+  { name:'최서현',  grade:'6학년', class:'6-1', teacher:'임형옥', school:'서신초' },
+  { name:'곡실링',  grade:'6학년', class:'6-1', teacher:'임형옥', school:'역촌' },
+  // 6-2 (공윤선)
+  { name:'박하온',  grade:'6학년', class:'6-2', teacher:'공윤선', school:'상신' },
+  { name:'송지윤',  grade:'6학년', class:'6-2', teacher:'공윤선', school:'역촌초' },
+  { name:'박한별',  grade:'6학년', class:'6-2', teacher:'공윤선', school:'역촌초' },
+  { name:'신소율',  grade:'6학년', class:'6-2', teacher:'공윤선', school:'역촌초' },
+  { name:'황서윤',  grade:'6학년', class:'6-2', teacher:'공윤선', school:'역촌초' },
+  { name:'채민경',  grade:'6학년', class:'6-2', teacher:'공윤선', school:'역촌초' },
+  { name:'김서연',  grade:'6학년', class:'6-2', teacher:'공윤선', school:'역촌초' },
+  { name:'이선유',  grade:'6학년', class:'6-2', teacher:'공윤선', school:'역촌' },
+  // 6-3 (임하은)
+  { name:'김은채',  grade:'6학년', class:'6-3', teacher:'임하은', school:'신사' },
+  { name:'최은하',  grade:'6학년', class:'6-3', teacher:'임하은', school:'역촌' },
+  { name:'김민서',  grade:'6학년', class:'6-3', teacher:'임하은', school:'역촌' },
+  { name:'권정서',  grade:'6학년', class:'6-3', teacher:'임하은', school:'신사' },
+  { name:'박재인',  grade:'6학년', class:'6-3', teacher:'임하은', school:'역촌' },
+  { name:'조세빈',  grade:'6학년', class:'6-3', teacher:'임하은', school:'향동숲내' },
+  { name:'문채은',  grade:'6학년', class:'6-3', teacher:'임하은', school:'신사' },
+  { name:'김채이',  grade:'6학년', class:'6-3', teacher:'임하은', school:'역촌' },
+  { name:'유아정',  grade:'6학년', class:'6-3', teacher:'임하은', school:'역촌' },
+  { name:'유도경',  grade:'6학년', class:'6-3', teacher:'임하은', school:'신사' },
+  // 6-4 (이상균)
+  { name:'박성민',  grade:'6학년', class:'6-4', teacher:'이상균', school:'역촌' },
+  { name:'한민규',  grade:'6학년', class:'6-4', teacher:'이상균', school:'서신' },
+  { name:'유승민',  grade:'6학년', class:'6-4', teacher:'이상균', school:'은명초' },
+  { name:'이창현',  grade:'6학년', class:'6-4', teacher:'이상균', school:'연광초' },
+  { name:'김도윤',  grade:'6학년', class:'6-4', teacher:'이상균', school:'서신' },
+  { name:'한율',    grade:'6학년', class:'6-4', teacher:'이상균', school:'상신' },
+  { name:'손연우',  grade:'6학년', class:'6-4', teacher:'이상균', school:'역촌' },
+  { name:'조유안',  grade:'6학년', class:'6-4', teacher:'이상균', school:'역촌' },
+  { name:'김지환',  grade:'6학년', class:'6-4', teacher:'이상균', school:'역촌' },
+  // 6-5 (전종곤)
+  { name:'방승호',  grade:'6학년', class:'6-5', teacher:'전종곤', school:'지축' },
+  { name:'양성욱',  grade:'6학년', class:'6-5', teacher:'전종곤', school:'호곡' },
+  { name:'정세환',  grade:'6학년', class:'6-5', teacher:'전종곤', school:'은평' },
+  { name:'이네모',  grade:'6학년', class:'6-5', teacher:'전종곤', school:'역촌' },
+  { name:'김하윤',  grade:'6학년', class:'6-5', teacher:'전종곤', school:'신도' },
+  { name:'박하음',  grade:'6학년', class:'6-5', teacher:'전종곤', school:'구현' },
+  { name:'윤주원',  grade:'6학년', class:'6-5', teacher:'전종곤', school:'신도' },
+  { name:'유민준',  grade:'6학년', class:'6-5', teacher:'전종곤', school:'응암초' },
+  { name:'안준영',  grade:'6학년', class:'6-5', teacher:'전종곤', school:'은평' },
+  { name:'박지운',  grade:'6학년', class:'6-5', teacher:'전종곤', school:'안곡' },
+  { name:'윤정담',  grade:'6학년', class:'6-5', teacher:'전종곤', school:'지호' },
+  // 6-6 (신종영)
+  { name:'김종윤',  grade:'6학년', class:'6-6', teacher:'신종영', school:'역촌초' },
+  { name:'김지호',  grade:'6학년', class:'6-6', teacher:'신종영', school:'역촌초' },
+  { name:'정서원',  grade:'6학년', class:'6-6', teacher:'신종영', school:'상신' },
+  { name:'이솔',    grade:'6학년', class:'6-6', teacher:'신종영', school:'중현' },
+  { name:'이용준',  grade:'6학년', class:'6-6', teacher:'신종영', school:'구산' },
+  { name:'허준석',  grade:'6학년', class:'6-6', teacher:'신종영', school:'역촌초' },
+  { name:'최인평',  grade:'6학년', class:'6-6', teacher:'신종영', school:'충암초' },
+  { name:'조은수',  grade:'6학년', class:'6-6', teacher:'신종영', school:'구현' },
+  { name:'임태호',  grade:'6학년', class:'6-6', teacher:'신종영', school:'대조' },
+  { name:'임도윤',  grade:'6학년', class:'6-6', teacher:'신종영', school:'역촌' },
+];
+
+function log(msg, type='') {
+  const el = document.getElementById('log');
+  el.style.display = 'block';
+  el.innerHTML += `<div class="${type}">${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// studentId 생성: class_name (예: 5-1_최세아)
+function makeId(s) {
+  return `${s.class}_${s.name}`;
+}
+
+async function runSetup() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.textContent = '등록 중...';
+
+  log('▶ 학생 DB 등록 시작', 'info');
+  log(`총 ${STUDENTS.length}명 처리 예정`);
+
+  let success = 0, skipped = 0, failed = 0;
+
+  for (const s of STUDENTS) {
+    const id = makeId(s);
+    try {
+      const ref = db.collection('students').doc(id);
+      const snap = await ref.get();
+      if (snap.exists) {
+        log(`⏭ 스킵 (이미 존재): ${s.class} ${s.name}`);
+        skipped++;
+      } else {
+        await ref.set({
+          id,
+          name: s.name,
+          grade: s.grade,
+          class: s.class,
+          teacher: s.teacher,
+          school: s.school,
+          active: true,
+          isNewcomer: false,
+          createdAt: new Date().toISOString(),
+          attendanceHistory: {},   // { "2026-04-28": "present" }
+          attendanceSummary: {     // 연간 요약
+            totalPresent: 0,
+            totalAbsent: 0,
+            totalSundays: 0,
+          }
+        });
+        log(`✓ 등록: ${s.class} ${s.name}`, 'ok');
+        success++;
+      }
+    } catch(e) {
+      log(`✗ 실패: ${s.class} ${s.name} — ${e.message}`, 'err');
+      failed++;
+    }
+  }
+
+  // 반 목록 메타 저장
+  try {
+    const classes = {};
+    STUDENTS.forEach(s => {
+      if (!classes[s.class]) classes[s.class] = { id: s.class, grade: s.grade, teacher: s.teacher, students: [] };
+      classes[s.class].students.push(makeId(s));
+    });
+    await db.collection('meta').doc('classes').set({ data: Object.values(classes), updatedAt: new Date().toISOString() });
+    log('✓ 반 목록 메타 저장 완료', 'ok');
+  } catch(e) {
+    log('✗ 반 목록 메타 저장 실패: ' + e.message, 'err');
+  }
+
+  log('', '');
+  log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'info');
+  log(`✅ 완료 — 등록 ${success}명 / 스킵 ${skipped}명 / 실패 ${failed}명`, 'info');
+  log(`이제 이 페이지는 닫아도 됩니다.`, '');
+
+  btn.textContent = '완료!';
+}
+</script>
+</body>
+</html>
