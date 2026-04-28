@@ -715,14 +715,30 @@
 </div>
 
 
-<script>
+<script type="module">
 // ═══════════════════════════════════════════
-// 설정값 (여기서 비밀번호·반 정보 수정)
+// Firebase 초기화
+// ═══════════════════════════════════════════
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCLN7Qfk_Ex5VA2iP9CkvO71O8x3pSUhj0",
+  authDomain: "church-56.firebaseapp.com",
+  projectId: "church-56",
+  storageBucket: "church-56.firebasestorage.app",
+  messagingSenderId: "646807576724",
+  appId: "1:646807576724:web:42e27698c73ab2cf321481"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ═══════════════════════════════════════════
+// 설정값
 // ═══════════════════════════════════════════
 const CONFIG = {
   password: '56부2026',   // ← 비밀번호 여기서 변경
-  // Google Apps Script 웹앱 URL (배포 후 여기 입력)
-  scriptUrl: 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE',
 };
 
 // ═══════════════════════════════════════════
@@ -772,6 +788,24 @@ function loadNewcomers() {
 
 function saveNewcomers(list) {
   localStorage.setItem('newcomerData', JSON.stringify(list));
+  // Firestore 동기화 (newcomers 컬렉션)
+  try {
+    const docRef = doc(db, 'meta', 'newcomers');
+    setDoc(docRef, { list, updatedAt: new Date().toISOString() });
+  } catch(e) { console.error('newcomer sync 오류:', e); }
+}
+
+async function syncNewcomersFromFirestore() {
+  try {
+    const docRef  = doc(db, 'meta', 'newcomers');
+    const snap    = await getDoc(docRef);
+    if (snap.exists()) {
+      const remote = snap.data().list;
+      localStorage.setItem('newcomerData', JSON.stringify(remote));
+      return remote;
+    }
+  } catch(e) { console.error('newcomer fetch 오류:', e); }
+  return null;
 }
 
 function loadClasses() {
@@ -1417,23 +1451,21 @@ async function submitAttendance() {
     }
   };
 
-  // ── 오늘 제출 데이터 localStorage에 항상 저장 (재진입 복원용)
+  // ── 로컬 저장 (복원용)
   saveSubmission(currentClass.id, payload);
 
-  // Google Apps Script로 전송 (URL 설정 전이면 로컬에만)
+  // ── Firestore 저장
+  // 경로: attendance/{날짜}/{반ID}
+  // 새신자는 attendance/{날짜}/새신자 로 저장
   let saved = false;
-  if (CONFIG.scriptUrl && CONFIG.scriptUrl !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
-    try {
-      await fetch(CONFIG.scriptUrl, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      saved = true;
-    } catch(e) {
-      console.error(e);
-    }
-  } else {
+  try {
+    const dateKey = payload.date;
+    const classId = currentClass.id;
+    const docRef  = doc(db, 'attendance', dateKey, 'classes', classId);
+    await setDoc(docRef, payload);
     saved = true;
+  } catch(e) {
+    console.error('Firestore 저장 오류:', e);
   }
 
   btn.classList.remove('loading');
@@ -1481,9 +1513,12 @@ function loadSubmission(classId) {
 function isSubmitted(classId) { return !!localStorage.getItem(submittedKey(classId)); }
 
 // ═══════════════════════════════════════════
-// 초기화
+// 초기화 — Firestore에서 최신 새신자 데이터 동기화 후 렌더
 // ═══════════════════════════════════════════
-renderClassSelect();
+(async () => {
+  await syncNewcomersFromFirestore();
+  renderClassSelect();
+})();
 </script>
 </body>
 </html>
