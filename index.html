@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>5·6학년부 출석체크</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+  :root {
+    --navy: #1a2744;
+    --navy-light: #243358;
+    --gold: #c9a84c;
+    --gold-light: #e8c96a;
+    --cream: #f7f4ee;
+    --text: #1a2744;
+    --text-sub: #6b7280;
+    --border: #e2ddd4;
+    --present: #2d7d5a;
+    --present-bg: #eaf5f0;
+    --absent: #c0392b;
+    --absent-bg: #fdf0ef;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 100px;
+  }
+
+  /* ── 상단 헤더 ── */
+  .header {
+    background: var(--navy);
+    padding: 18px 20px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 2px solid var(--gold);
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+  .header-sub {
+    font-size: 11px;
+    color: var(--gold-light);
+    margin-top: 2px;
+    font-weight: 300;
+  }
+  .header-badge {
+    background: var(--gold);
+    color: var(--navy);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+
+  /* ── 화면 전환 ── */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── 잠금 화면 ── */
+  #screen-lock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 40px 24px;
+    background: var(--navy);
+  }
+  .lock-icon {
+    width: 72px;
+    height: 72px;
+    background: rgba(201,168,76,0.15);
+    border: 1.5px solid var(--gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    font-size: 30px;
+  }
+  .lock-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  .lock-sub {
+    font-size: 13px;
+    color: var(--gold-light);
+    text-align: center;
+    margin-bottom: 36px;
+    font-weight: 300;
+  }
+  .lock-input-wrap {
+    width: 100%;
+    max-width: 320px;
+    position: relative;
+  }
+  .lock-input {
+    width: 100%;
+    background: rgba(255,255,255,0.07);
+    border: 1.5px solid rgba(201,168,76,0.4);
+    border-radius: var(--radius);
+    padding: 16px 50px 16px 18px;
+    font-size: 18px;
+    color: #fff;
+    font-family: 'Noto Sans KR', sans-serif;
+    letter-spacing: 4px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .lock-input:focus { border-color: var(--gold); }
+  .lock-input::placeholder { letter-spacing: 1px; color: rgba(255,255,255,0.3); font-size: 14px; }
+  .lock-toggle {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+  }
+  .lock-btn {
+    width: 100%;
+    max-width: 320px;
+    margin-top: 14px;
+    background: var(--gold);
+    color: var(--navy);
+    border: none;
+    border-radius: var(--radius);
+    padding: 16px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .lock-btn:active { transform: scale(0.97); background: var(--gold-light); }
+  .lock-error {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #ff6b6b;
+    text-align: center;
+    min-height: 20px;
+  }
+  .lock-hint {
+    margin-top: 32px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.2);
+    text-align: center;
+  }
+
+  /* ── 반 선택 화면 ── */
+  #screen-class { padding: 20px 16px; }
+  .section-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-sub);
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    padding-left: 4px;
+  }
+  .class-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .class-btn {
+    background: #fff;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 6px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .class-btn:active { transform: scale(0.95); }
+  .class-btn.grade5 { border-top: 3px solid #3b82f6; }
+  .class-btn.grade6 { border-top: 3px solid var(--gold); }
+  .class-btn.grade-new { border-top: 3px solid var(--present); }
+  .class-btn.submitted { background: #f0faf5; }
+  .submitted-badge {
+    display: block;
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--present);
+  }
+  .class-btn-label {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--navy);
+    display: block;
+  }
+  .class-btn-teacher {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--navy);
+    margin-top: 5px;
+    display: block;
+  }
+
+  /* ── 출석 체크 화면 ── */
+  #screen-attendance { padding: 16px; }
+
+  .attend-header {
+    background: #fff;
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 14px;
+    border: 1px solid var(--border);
+  }
+  .attend-class-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .attend-teacher {
+    font-size: 12px;
+    color: var(--text-sub);
+    margin-top: 2px;
+  }
+  .attend-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+  }
+  .stat-item {
+    text-align: center;
+    flex: 1;
+    padding: 10px 0;
+    border-radius: 10px;
+  }
+  .stat-item.present-stat { background: var(--present-bg); }
+  .stat-item.absent-stat { background: var(--absent-bg); }
+  .stat-item.total-stat { background: #f0f4ff; }
+  .stat-num {
+    font-size: 22px;
+    font-weight: 700;
+    display: block;
+    line-height: 1;
+  }
+  .stat-item.present-stat .stat-num { color: var(--present); }
+  .stat-item.absent-stat .stat-num { color: var(--absent); }
+  .stat-item.total-stat .stat-num { color: var(--navy); }
+  .stat-label { font-size: 10px; color: var(--text-sub); margin-top: 3px; display: block; }
+
+  /* 일괄 버튼 */
+  .bulk-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .bulk-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    color: var(--text-sub);
+    transition: all 0.15s;
+  }
+  .bulk-btn:active { transform: scale(0.97); opacity: 0.75; }
+
+  /* 학생 카드 */
+  .student-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .student-card {
+    background: #fff;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .student-card.present { border-color: var(--present); }
+  .student-card.absent { border-color: #e5e7eb; }
+
+  .student-main {
+    display: flex;
+    align-items: center;
+    padding: 14px 14px;
+    gap: 12px;
+    cursor: pointer;
+  }
+  .student-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--cream);
+    color: var(--text-sub);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .student-card.present .student-num { background: var(--present-bg); color: var(--present); }
+
+  .student-name {
+    flex: 1;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  /* 출석/결석 토글 */
+  .attend-toggle {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .toggle-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--cream);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    color: var(--text-sub);
+    transition: all 0.15s;
+  }
+  .toggle-btn.active-present {
+    background: var(--present-bg);
+    border-color: var(--present);
+    color: var(--present);
+  }
+  .toggle-btn.active-absent {
+    background: var(--absent-bg);
+    border-color: var(--absent);
+    color: var(--absent);
+  }
+
+  /* 심방 상세 영역 (출석/결석 누르면 항상 펼침) */
+  .absence-detail {
+    display: none;
+    padding: 0 14px 14px;
+    border-top: 1px solid #f0ece6;
+  }
+  .student-card.detail-open .absence-detail { display: block; }
+
+  /* 결석일 때만 보이는 항목 */
+  .absent-only { display: none; }
+  .student-card.absent .absent-only { display: block; }
+
+  .detail-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-sub);
+    margin-bottom: 8px;
+    margin-top: 10px;
+  }
+
+  /* 심방 방법 선택 */
+  .contact-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 2px;
+  }
+  .chip {
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: var(--cream);
+    font-size: 12px;
+    font-weight: 500;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    color: var(--text-sub);
+    transition: all 0.15s;
+  }
+  .chip.selected {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
+  }
+
+  /* 주차 선택 칩 */
+  .week-chip {
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: var(--cream);
+    font-size: 11px;
+    font-weight: 500;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    color: var(--text-sub);
+    transition: all 0.15s;
+    display: inline-block;
+  }
+  .week-chip:active { transform: scale(0.93); }
+
+  /* 결석사유 / 심방메모 입력 */
+  .detail-input {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--text);
+    background: var(--cream);
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-top: 4px;
+  }
+  .detail-input:focus { border-color: var(--navy); }
+
+  /* ── 추가 보고 섹션 ── */
+  .extra-section {
+    background: #fff;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 16px;
+    margin-top: 14px;
+  }
+  .extra-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .extra-section-title::before {
+    content: '';
+    width: 4px;
+    height: 16px;
+    background: var(--gold);
+    border-radius: 2px;
+    display: inline-block;
+  }
+  .extra-textarea {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--text);
+    background: var(--cream);
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 10px;
+    line-height: 1.6;
+  }
+  .extra-textarea:focus { border-color: var(--navy); }
+  .extra-textarea:last-child { margin-bottom: 0; }
+  .extra-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-sub);
+    margin-bottom: 5px;
+    display: block;
+  }
+
+  /* ── 제출 버튼 ── */
+  .submit-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px 16px 24px;
+    background: linear-gradient(to top, var(--cream) 70%, transparent);
+    z-index: 50;
+  }
+  .submit-btn {
+    width: 100%;
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 17px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .submit-btn:active { transform: scale(0.98); background: var(--navy-light); }
+  .submit-btn.loading { background: var(--text-sub); }
+
+  /* ── 제출 완료 화면 ── */
+  #screen-done {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+    padding: 40px 24px;
+    text-align: center;
+  }
+  .done-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--present-bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    font-size: 36px;
+  }
+  .done-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 8px;
+  }
+  .done-sub {
+    font-size: 14px;
+    color: var(--text-sub);
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+  .done-summary {
+    background: #fff;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 16px 24px;
+    width: 100%;
+    max-width: 320px;
+    margin-bottom: 24px;
+  }
+  .done-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .done-row:last-child { border-bottom: none; }
+  .done-row-label { color: var(--text-sub); }
+  .done-row-val { font-weight: 700; color: var(--navy); }
+  .done-again-btn {
+    background: var(--cream);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 32px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--text-sub);
+    cursor: pointer;
+  }
+
+  /* 뒤로가기 버튼 */
+  .back-btn {
+    background: none;
+    border: none;
+    color: var(--gold-light);
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* 날짜 표시 */
+  .date-bar {
+    background: rgba(201,168,76,0.1);
+    border-bottom: 1px solid rgba(201,168,76,0.2);
+    padding: 8px 20px;
+    font-size: 12px;
+    color: var(--gold);
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ 잠금 화면 ══════════ -->
+<div id="screen-lock" class="screen active">
+  <div class="lock-icon">🔒</div>
+  <div class="lock-title">5·6학년 부서</div>
+  <div class="lock-sub">출석체크 시스템<br>담임 선생님 전용입니다</div>
+  <div class="lock-input-wrap">
+    <input class="lock-input" type="password" id="pw-input" placeholder="비밀번호를 입력하세요" maxlength="20" autocomplete="off">
+    <button class="lock-toggle" onclick="togglePw()" id="pw-eye">👁</button>
+  </div>
+  <button class="lock-btn" onclick="checkPassword()">입력</button>
+  <div class="lock-error" id="lock-error"></div>
+  <div class="lock-hint">* 비밀번호는 부서 담임 선생님께 문의하세요</div>
+</div>
+
+<!-- ══════════ 헤더 (잠금 해제 후 표시) ══════════ -->
+<div id="main-header" style="display:none">
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <div class="header-title">5·6학년부서 출석체크</div>
+        <div class="header-sub" id="header-sub-text">반을 선택해주세요</div>
+      </div>
+      <button class="header-badge" id="back-btn" onclick="goToClassSelect()" style="display:none">← 뒤로</button>
+    </div>
+  </div>
+  <div class="date-bar" id="date-bar"></div>
+</div>
+
+<!-- ══════════ 반 선택 화면 ══════════ -->
+<div id="screen-class" class="screen" style="display:none">
+  <div id="date-card" style="background:var(--navy);border-radius:var(--radius);padding:18px 20px;margin-bottom:18px;margin-top:4px;">
+    <div id="date-card-text" style="font-size:22px;font-weight:700;color:#fff;line-height:1.3;"></div>
+    <div id="date-card-sub" style="font-size:13px;color:var(--gold-light);margin-top:4px;font-weight:300;"></div>
+  </div>
+  <p class="section-title">5학년</p>
+  <div class="class-grid" id="grade5-grid"></div>
+  <p class="section-title">6학년</p>
+  <div class="class-grid" id="grade6-grid"></div>
+  <p class="section-title">새신자 / 방문자</p>
+  <div class="class-grid" id="new-grid"></div>
+</div>
+
+<!-- ══════════ 출석 체크 화면 ══════════ -->
+<div id="screen-attendance" class="screen" style="display:none">
+  <!-- 통계 카드 -->
+  <div class="attend-header">
+    <div class="attend-class-name" id="attend-class-name"></div>
+    <div class="attend-teacher" id="attend-teacher-name"></div>
+    <div class="attend-stats">
+      <div class="stat-item present-stat">
+        <span class="stat-num" id="stat-present">0</span>
+        <span class="stat-label">출석</span>
+      </div>
+      <div class="stat-item absent-stat">
+        <span class="stat-num" id="stat-absent">0</span>
+        <span class="stat-label">결석</span>
+      </div>
+      <div class="stat-item total-stat">
+        <span class="stat-num" id="stat-total">0</span>
+        <span class="stat-label">재적</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 일괄 처리 -->
+  <div class="bulk-actions">
+    <button type="button" class="bulk-btn" id="bulk-present" onclick="setAll('present')">✓ 전원 출석</button>
+    <button type="button" class="bulk-btn" id="bulk-absent" onclick="setAll('absent')">전원 결석</button>
+    <button type="button" class="bulk-btn" id="bulk-reset" onclick="setAll('reset')">초기화</button>
+  </div>
+
+  <!-- 학생 목록 -->
+  <div class="student-list" id="student-list"></div>
+
+  <!-- 추가 보고 -->
+  <div class="extra-section">
+    <div class="extra-section-title">추가 보고</div>
+    <span class="extra-label">◉ 오늘 공과 진행은 어떠셨나요?</span>
+    <textarea class="extra-textarea" id="extra-lesson" rows="3" placeholder="공과 진행 내용을 입력해주세요"></textarea>
+    <span class="extra-label">◉ 기도가 필요한 가정 / 신상 변화</span>
+    <textarea class="extra-textarea" id="extra-prayer" rows="3" placeholder="기도제목이나 특이사항을 입력해주세요"></textarea>
+    <span class="extra-label">◉ 별도 관리 학생</span>
+    <textarea class="extra-textarea" id="extra-special" rows="2" placeholder="별도 관리가 필요한 학생이 있으면 입력해주세요"></textarea>
+  </div>
+
+  <div style="height:80px"></div>
+
+  <!-- 제출 버튼 -->
+  <div class="submit-bar">
+    <button class="submit-btn" id="submit-btn" onclick="submitAttendance()">
+      <span id="submit-text">출석 제출하기</span>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════ 완료 화면 ══════════ -->
+<div id="screen-done" class="screen" style="display:none">
+  <div class="done-icon">✅</div>
+  <div class="done-title">제출 완료!</div>
+  <div class="done-sub" id="done-sub-text">출석 정보가 성공적으로<br>저장되었습니다.</div>
+  <div class="done-summary" id="done-summary"></div>
+  <button class="done-again-btn" onclick="goToClassSelect()">← 다른 반 입력하기</button>
+</div>
+
+
+<script>
+// ═══════════════════════════════════════════
+// 설정값 (여기서 비밀번호·반 정보 수정)
+// ═══════════════════════════════════════════
+const CONFIG = {
+  password: '56부2026',   // ← 비밀번호 여기서 변경
+  // Google Apps Script 웹앱 URL (배포 후 여기 입력)
+  scriptUrl: 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE',
+};
+
+// ═══════════════════════════════════════════
+// 학생 데이터 (관리자 페이지에서 수정되면 localStorage에 저장됨)
+// localStorage 'classData' 키에 JSON이 있으면 그것을 우선 사용
+// ═══════════════════════════════════════════
+const DEFAULT_CLASSES = {
+  '5학년': [
+    { id: '5-1', teacher: '유순자', students: ['최세아','임서현','박지윤','홍아윤','한하영','심하원','심예나','이지우','김나형','이서빈'] },
+    { id: '5-2', teacher: '전주희', students: ['김희우','최하진','유가나','김하린','김예나','김하람','김재희','이지아','성시현','이예서'] },
+    { id: '5-3', teacher: '박찬미', students: ['유하나','김주아','김민아','김라율','권소율','박정하','문서윤','안유정','선예진','나시온'] },
+    { id: '5-4', teacher: '김종성', students: ['이다엘','임승한','안정현','정시원','곽리온','김예담','백시연'] },
+    { id: '5-5', teacher: '최영길', students: ['민예준','정인우','홍은권','이호진','권지훈','임가온','김주원','김찬희','홍서준','김민성','김민준','김세윤','허준혁','이주호','임호'] },
+    { id: '5-6', teacher: '곽승재', students: ['석하람','정재아','주시우','구도훈','전제한'] },
+  ],
+  '6학년': [
+    { id: '6-1', teacher: '임형옥', students: ['이루리','주봄이','변서연','김주아','송채원','안규민','한지아','노정윤','최서현','곡실링'] },
+    { id: '6-2', teacher: '공윤선', students: ['박하온','송지윤','박한별','신소율','황서윤','채민경','김서연','이선유'] },
+    { id: '6-3', teacher: '임하은', students: ['김은채','최은하','김민서','권정서','박재인','조세빈','문채은','김채이','유아정','유도경'] },
+    { id: '6-4', teacher: '이상균', students: ['박성민','한민규','유승민','이창현','김도윤','한율','손연우','조유안','김지환'] },
+    { id: '6-5', teacher: '전종곤', students: ['방승호','양성욱','정세환','이네모','김하윤','박하음','윤주원','유민준','안준영','박지운','윤정담'] },
+    { id: '6-6', teacher: '신종영', students: ['김종윤','김지호','정서원','이솔','이용준','허준석','최인평','조은수','임태호','임도윤'] },
+  ],
+  '새신자/방문자': [
+    { id: '새신자', teacher: '부서 전체', students: [], isNewcomer: true },
+  ],
+};
+
+// ── 올해 새신자 기본 명단 (엑셀 2026새친구 출결 기준)
+// week: 현재까지 출석 누적 횟수, graduated: 등반 완료
+const DEFAULT_NEWCOMERS = [
+  { name: '이하랑', grade: '5학년', week: 2, graduated: false, guide: '', memo: '' },
+  { name: '이서빈', grade: '5학년', week: 3, graduated: false, guide: '', memo: '' },
+  { name: '이예서', grade: '5학년', week: 3, graduated: false, guide: '', memo: '' },
+  { name: '양효리', grade: '6학년', week: 1, graduated: false, guide: '', memo: '' },
+  { name: '박지운', grade: '6학년', week: 4, graduated: true,  guide: '', memo: '' },
+  { name: '윤정담', grade: '6학년', week: 2, graduated: false, guide: '', memo: '' },
+];
+
+function loadNewcomers() {
+  try {
+    const saved = localStorage.getItem('newcomerData');
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_NEWCOMERS));
+}
+
+function saveNewcomers(list) {
+  localStorage.setItem('newcomerData', JSON.stringify(list));
+}
+
+function loadClasses() {
+  try {
+    const saved = localStorage.getItem('classData');
+    if (saved) return JSON.parse(saved);
+  } catch(e) {}
+  return DEFAULT_CLASSES;
+}
+
+const CLASSES = loadClasses();
+
+// ═══════════════════════════════════════════
+// 상태
+// ═══════════════════════════════════════════
+let currentClass = null;
+let attendanceData = {};  // { 이름: { status: 'present'|'absent'|null, contactMethod: [], reason: '', memo: '' } }
+let pwVisible = false;
+
+// ═══════════════════════════════════════════
+// 잠금
+// ═══════════════════════════════════════════
+function togglePw() {
+  pwVisible = !pwVisible;
+  const inp = document.getElementById('pw-input');
+  inp.type = pwVisible ? 'text' : 'password';
+  document.getElementById('pw-eye').textContent = pwVisible ? '🙈' : '👁';
+}
+
+document.getElementById('pw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPassword();
+});
+
+function checkPassword() {
+  const val = document.getElementById('pw-input').value;
+  const err = document.getElementById('lock-error');
+  if (val === CONFIG.password) {
+    document.getElementById('screen-lock').style.display = 'none';
+    document.getElementById('main-header').style.display = 'block';
+    showScreen('class');
+    setDateBar();
+  } else {
+    err.textContent = '비밀번호가 올바르지 않습니다.';
+    document.getElementById('pw-input').value = '';
+    setTimeout(() => err.textContent = '', 2500);
+  }
+}
+
+function logout() {
+  if (!confirm('잠금 화면으로 돌아가시겠어요?')) return;
+  document.getElementById('pw-input').value = '';
+  document.getElementById('screen-lock').style.display = 'flex';
+  document.getElementById('main-header').style.display = 'none';
+  showScreen(null);
+}
+
+// ═══════════════════════════════════════════
+// 화면 전환
+// ═══════════════════════════════════════════
+function showScreen(name) {
+  ['class','attendance','done'].forEach(s => {
+    const el = document.getElementById('screen-' + s);
+    if (el) el.style.display = 'none';
+  });
+  if (name) {
+    const el = document.getElementById('screen-' + name);
+    if (el) el.style.display = 'block';
+  }
+}
+
+function setDateBar() {
+  const now = new Date();
+  const days = ['일','월','화','수','목','금','토'];
+  document.getElementById('date-bar').textContent =
+    `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${days[now.getDay()]}) 예배`;
+}
+
+// ═══════════════════════════════════════════
+// 반 선택 화면 렌더
+// ═══════════════════════════════════════════
+function renderClassSelect() {
+  // ── 날짜 카드 채우기
+  const dc = document.getElementById('date-card-text');
+  const ds = document.getElementById('date-card-sub');
+  if (dc) {
+    const now = new Date();
+    const days = ['일','월','화','수','목','금','토'];
+    const month = now.getMonth() + 1;
+    const date  = now.getDate();
+    const day   = days[now.getDay()];
+    // 이번 주차 계산 (해당 월의 몇째 주)
+    const weekNum = Math.ceil(date / 7);
+    dc.textContent = `${now.getFullYear()}년 ${month}월 ${date}일 (${day})`;
+    ds.textContent = `${month}월 ${weekNum}주차 예배 · 출석체크`;
+  }
+
+  const gradeMap = { '5학년': 'grade5-grid', '6학년': 'grade6-grid', '새신자/방문자': 'new-grid' };
+  const colorMap = { '5학년': 'grade5', '6학년': 'grade6', '새신자/방문자': 'grade-new' };
+  Object.entries(CLASSES).forEach(([grade, list]) => {
+    const grid = document.getElementById(gradeMap[grade]);
+    if (!grid) return;
+    grid.innerHTML = '';
+    list.forEach(cls => {
+      const done = isSubmitted(cls.id);
+      const btn = document.createElement('div');
+      btn.className = 'class-btn ' + colorMap[grade] + (done ? ' submitted' : '');
+      btn.innerHTML = `
+        <span class="class-btn-label">${cls.id}</span>
+        <span class="class-btn-teacher">${cls.teacher} T</span>
+        ${done ? '<span class="submitted-badge">✓ 제출</span>' : ''}
+      `;
+      btn.onclick = () => selectClass(cls);
+      grid.appendChild(btn);
+    });
+  });
+}
+
+function selectClass(cls) {
+  currentClass = cls;
+  attendanceData = {};
+
+  const prev = loadSubmission(cls.id);
+
+  if (cls.isNewcomer) {
+    // 새신자반은 renderNewcomerList 내부에서 처리
+  } else {
+    cls.students.forEach(name => {
+      const saved = prev && prev.students ? prev.students.find(s => s.name === name) : null;
+      attendanceData[name] = {
+        status: saved ? saved.status : null,
+        contactMethod: saved && saved.contactMethod ? saved.contactMethod.split(', ').filter(Boolean) : [],
+        reason: saved ? (saved.reason || '') : '',
+        memo: saved ? (saved.memo || '') : '',
+        isNewcomer: false,
+      };
+    });
+  }
+
+  renderAttendance();
+
+  // 제출한 반이면 복원된 값 화면에 반영
+  if (prev && !cls.isNewcomer) {
+    restoreAttendanceUI(prev);
+  }
+
+  // 제출 버튼 텍스트 / 수정 모드 표시
+  const submitBtn = document.getElementById('submit-text');
+  const isResubmit = !!prev;
+  submitBtn.textContent = isResubmit ? '수정 제출하기' : '출석 제출하기';
+  currentClass._isResubmit = isResubmit;
+
+  showScreen('attendance');
+  document.getElementById('header-sub-text').textContent = `${cls.id} 출석체크${isResubmit ? ' (수정중)' : ''}`;
+  document.getElementById('back-btn').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function restoreAttendanceUI(prev) {
+  if (!prev || !prev.students) return;
+  prev.students.forEach(s => {
+    const data = attendanceData[s.name];
+    if (!data || !s.status || s.status === '미체크') return;
+    setStatus(s.name, s.status);
+    // 심방 방법 칩 복원
+    if (s.contactMethod) {
+      s.contactMethod.split(', ').filter(Boolean).forEach(method => {
+        const chipMap = { '전화심방': 'chip-phone', '메신저심방': 'chip-msg', '미연락': 'chip-none' };
+        const chipId = chipMap[method] + '-' + s.name;
+        const chip = document.getElementById(chipId);
+        if (chip) { chip.classList.add('selected'); }
+      });
+    }
+    // 결석사유 / 메모 복원
+    const card = document.getElementById('card-' + s.name);
+    if (card) {
+      const reasonInput = card.querySelector('.absent-only input');
+      const memoInput   = card.querySelector('textarea.detail-input');
+      if (reasonInput && s.reason) reasonInput.value = s.reason;
+      if (memoInput   && s.memo)   memoInput.value   = s.memo;
+    }
+  });
+  // 추가 보고 복원
+  if (prev.extra) {
+    if (prev.extra.lesson)  document.getElementById('extra-lesson').value  = prev.extra.lesson;
+    if (prev.extra.prayer)  document.getElementById('extra-prayer').value  = prev.extra.prayer;
+    if (prev.extra.special) document.getElementById('extra-special').value = prev.extra.special;
+  }
+}
+
+function goToClassSelect() {
+  currentClass = null;
+  renderClassSelect();
+  showScreen('class');
+  document.getElementById('header-sub-text').textContent = '반을 선택해주세요';
+  document.getElementById('back-btn').style.display = 'none';
+  window.scrollTo(0, 0);
+}
+
+// ═══════════════════════════════════════════
+// 출석 체크 렌더
+// ═══════════════════════════════════════════
+function renderAttendance() {
+  const cls = currentClass;
+  document.getElementById('attend-class-name').textContent = cls.isNewcomer ? '새신자 / 방문자' : `${cls.id}반`;
+  document.getElementById('attend-teacher-name').textContent = `담임: ${cls.teacher} 선생님`;
+  document.getElementById('stat-total').textContent = cls.isNewcomer ? '-' : cls.students.length;
+
+  document.getElementById('extra-lesson').value = '';
+  document.getElementById('extra-prayer').value = '';
+  document.getElementById('extra-special').value = '';
+
+  const list = document.getElementById('student-list');
+  list.innerHTML = '';
+
+  // 일괄 버튼 숨기기/보이기
+  document.querySelector('.bulk-actions').style.display = cls.isNewcomer ? 'none' : 'flex';
+
+  if (cls.isNewcomer) {
+    renderNewcomerList();
+  } else {
+    cls.students.forEach((name, i) => renderStudentCard(name, i, list));
+  }
+  updateStats();
+}
+
+// ── 일반 학생 카드 ──
+function renderStudentCard(name, i, list) {
+  const card = document.createElement('div');
+  card.className = 'student-card';
+  card.id = `card-${name}`;
+  card.innerHTML = `
+    <div class="student-main">
+      <div class="student-num">${i+1}</div>
+      <div class="student-name">${name}</div>
+      <div class="attend-toggle">
+        <button class="toggle-btn" id="btn-p-${name}" onclick="setStatus('${name}','present')">출석</button>
+        <button class="toggle-btn" id="btn-a-${name}" onclick="setStatus('${name}','absent')">결석</button>
+      </div>
+    </div>
+    <div class="absence-detail" id="detail-${name}">
+      <div class="detail-label">심방 방법 <span style="color:var(--absent);font-size:10px">*필수</span></div>
+      <div class="contact-chips">
+        <span class="chip" id="chip-phone-${name}" onclick="toggleChip('${name}','전화심방',this)">📞 전화심방</span>
+        <span class="chip" id="chip-msg-${name}" onclick="toggleChip('${name}','메신저심방',this)">💬 메신저심방</span>
+        <span class="chip" id="chip-none-${name}" onclick="toggleChip('${name}','미연락',this)">— 미연락</span>
+      </div>
+      <div class="absent-only">
+        <div class="detail-label" style="margin-top:10px">결석 사유</div>
+        <input class="detail-input" type="text" placeholder="예: 여행, 몸살, 연락 안됨..." oninput="updateField('${name}','reason',this.value)">
+      </div>
+      <div class="detail-label" style="margin-top:10px">심방 메모</div>
+      <textarea class="detail-input" rows="2" placeholder="통화 내용이나 메모..." oninput="updateField('${name}','memo',this.value)"></textarea>
+    </div>
+  `;
+  list.appendChild(card);
+}
+
+// ── 새신자/방문자 전용 렌더 ──
+let newcomerCount = 0;
+
+function weekLabel(w) {
+  if (w >= 4) return '등반완료';
+  return w + '주차';
+}
+function weekBadgeStyle(w, graduated) {
+  if (graduated || w >= 4) return 'background:#e8f0fe;color:#1a5bbf;border:1.5px solid #1a5bbf;font-weight:700;';
+  if (w === 3) return 'background:#fff3e0;color:#e65100;border:1.5px solid #e65100;font-weight:700;';
+  if (w === 2) return 'background:#fff8e1;color:#f9a825;border:1.5px solid #f9a825;font-weight:700;';
+  return 'background:var(--present-bg);color:var(--present);border:1.5px solid var(--present);font-weight:700;';
+}
+
+function renderNewcomerList() {
+  newcomerCount = 0;
+  attendanceData = {};
+  const list = document.getElementById('student-list');
+  // 등반 완료 제외한 새신자만 표시
+  const allNewcomers = loadNewcomers();
+  const newcomers = allNewcomers.filter(nc => !nc.graduated);
+
+  // ── 전원결석 / 초기화 버튼 ──
+  const bulkArea = document.createElement('div');
+  bulkArea.style.cssText = 'display:flex;gap:8px;margin-bottom:10px;';
+  bulkArea.innerHTML = `
+    <button type="button" class="bulk-btn" id="nc-bulk-absent"
+      style="flex:1;color:var(--absent);border-color:var(--border);"
+      onclick="setAllNewcomersAbsent()">전원 결석</button>
+    <button type="button" class="bulk-btn" id="nc-bulk-reset"
+      style="flex:1;"
+      onclick="resetAllNewcomers()">초기화</button>
+  `;
+  list.appendChild(bulkArea);
+
+  // ── 기존 새신자 명단 ──
+  if (newcomers.length > 0) {
+    const secLabel = document.createElement('div');
+    secLabel.className = 'section-title';
+    secLabel.style.cssText = 'margin-bottom:8px;margin-top:4px;';
+    secLabel.textContent = `올해 새신자 (${newcomers.length}명)`;
+    list.appendChild(secLabel);
+  }
+
+  newcomers.forEach((nc, idx) => {
+    // allNewcomers에서의 실제 인덱스 추적 (저장 시 사용)
+    const realIdx = allNewcomers.findIndex(n => n.name === nc.name);
+    const id = 'existing-' + realIdx;
+    attendanceData[id] = { status: null, name: nc.name, type: '새신자', week: nc.week, graduated: false, guide: nc.guide||'', memo: nc.memo||'', isExisting: true, realIdx };
+    const card = document.createElement('div');
+    card.className = 'student-card';
+    card.id = 'card-' + id;
+
+    // 주차 칩: 출석 전까지 전부 비활성 (출석 시 자동 증가)
+    const CHIP_DISABLED = 'background:#f0f0f0;color:#ccc;border:1.5px solid #e0e0e0;cursor:not-allowed;pointer-events:none;';
+
+    card.innerHTML = `
+      <div class="student-main">
+        <div class="student-num">${idx+1}</div>
+        <div style="flex:1;">
+          <div style="font-size:15px;font-weight:500;color:var(--text);">${nc.name}
+            <span style="font-size:11px;color:var(--text-sub);">${nc.grade||''}</span>
+          </div>
+          <div id="chips-${id}" style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap;">
+            <span class="week-chip" style="${CHIP_DISABLED}">1주차</span>
+            <span class="week-chip" style="${CHIP_DISABLED}">2주차</span>
+            <span class="week-chip" style="${CHIP_DISABLED}">3주차</span>
+            <span class="week-chip" style="${CHIP_DISABLED}">등반완료</span>
+          </div>
+        </div>
+        <div class="attend-toggle" style="flex-direction:column;gap:4px;align-items:flex-end;">
+          <button class="toggle-btn" id="btn-p-${id}" onclick="setStatus('${id}','present')">출석</button>
+          <button class="toggle-btn" id="btn-a-${id}" onclick="setStatus('${id}','absent')">결석</button>
+        </div>
+      </div>
+      <div class="absence-detail" id="detail-${id}">
+        <div class="detail-label">심방 방법</div>
+        <div class="contact-chips">
+          <span class="chip" onclick="toggleChip('${id}','전화심방',this)">📞 전화심방</span>
+          <span class="chip" onclick="toggleChip('${id}','메신저심방',this)">💬 메신저심방</span>
+          <span class="chip" onclick="toggleChip('${id}','미연락',this)">— 미연락</span>
+        </div>
+        <div class="detail-label" style="margin-top:10px">메모</div>
+        <textarea class="detail-input" rows="2" placeholder="통화 내용이나 특이사항..." oninput="updateField('${id}','memo',this.value)">${nc.memo||''}</textarea>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+
+  // ── 구분선 ──
+  const divider = document.createElement('div');
+  divider.style.cssText = 'border-top:1px solid var(--border);margin:12px 0 8px;';
+  list.appendChild(divider);
+
+  // ── 추가 버튼 ──
+  const addArea = document.createElement('div');
+  addArea.id = 'newcomer-add-area';
+  addArea.style.cssText = 'display:flex;gap:8px;margin-bottom:4px;';
+  addArea.innerHTML = `
+    <button type="button" class="bulk-btn" style="flex:1;"
+      onclick="addNewcomerCard('새신자')">+ 새신자 추가 (1주차)</button>
+    <button type="button" class="bulk-btn" style="flex:1;"
+      onclick="addNewcomerCard('방문자')">+ 방문자 추가</button>
+  `;
+  list.appendChild(addArea);
+
+  updateStats();
+}
+
+function setAllNewcomersAbsent() {
+  Object.keys(attendanceData).forEach(id => {
+    if (attendanceData[id].isExisting) setStatus(id, 'absent');
+  });
+  // 피드백
+  const btns = document.querySelectorAll('#student-list .bulk-btn');
+  if (btns[0]) { btns[0].textContent = '✓ 완료'; setTimeout(() => { btns[0].textContent = '전원 결석'; }, 800); }
+}
+
+function resetAllNewcomers() {
+  Object.keys(attendanceData).forEach(id => {
+    if (!attendanceData[id].isExisting) return;
+    attendanceData[id].status = null;
+    const card = document.getElementById('card-' + id);
+    if (card) card.className = 'student-card';
+    const bp = document.getElementById('btn-p-' + id);
+    const ba = document.getElementById('btn-a-' + id);
+    if (bp) bp.className = 'toggle-btn';
+    if (ba) ba.className = 'toggle-btn';
+    clearWeekChip(id);
+  });
+  updateStats();
+}
+
+// 출석 시 주차 자동 증가 처리 (admin에서만 수동 수정 가능)
+function applyWeekChip(id) {
+  const data = attendanceData[id];
+  if (!data || !data.isExisting) return;
+
+  // data.week는 원본 그대로 유지 — 표시·저장용 nextWeek만 계산
+  const nextWeek = data.week + 1;
+  const graduated = nextWeek >= 4;
+
+  const CHIP_DISABLED = 'background:#f0f0f0;color:#ccc;border:1.5px solid #e0e0e0;cursor:not-allowed;pointer-events:none;';
+  const chipsEl = document.getElementById('chips-' + id);
+  if (!chipsEl) return;
+  const chips = chipsEl.querySelectorAll('.week-chip');
+
+  chips.forEach((chip, i) => {
+    chip.className = 'week-chip';
+    const isTarget = graduated ? i === 3 : i + 1 === nextWeek;
+    chip.setAttribute('style', isTarget ? weekBadgeStyle(graduated ? 4 : nextWeek, graduated) : CHIP_DISABLED);
+    if (isTarget) chip.classList.add('wsel');
+  });
+
+  // displayWeek에만 기록 — data.week는 건드리지 않음
+  // 제출 시 이 값으로 localStorage에 저장
+  data.displayWeek = graduated ? 4 : nextWeek;
+  data.displayGraduated = graduated;
+}
+
+function clearWeekChip(id) {
+  const CHIP_DISABLED = 'background:#f0f0f0;color:#ccc;border:1.5px solid #e0e0e0;cursor:not-allowed;pointer-events:none;';
+  const chipsEl = document.getElementById('chips-' + id);
+  if (!chipsEl) return;
+  chipsEl.querySelectorAll('.week-chip').forEach(chip => {
+    chip.className = 'week-chip';
+    chip.setAttribute('style', CHIP_DISABLED);
+  });
+}
+
+function addNewcomerCard(type) {
+  newcomerCount++;
+  const id = 'newcomer-' + newcomerCount;
+  const isNewcomer = type === '새신자';
+  attendanceData[id] = { status: 'present', name: '', type, week: isNewcomer ? 1 : 0, graduated: false, guide: '', memo: '', isNew: true };
+
+  const list = document.getElementById('student-list');
+  const card = document.createElement('div');
+  card.className = 'student-card detail-open present';
+  card.id = 'card-' + id;
+
+  const typeBadgeStyle = isNewcomer
+    ? 'background:var(--present-bg);color:var(--present);border:1px solid var(--present);'
+    : 'background:#f0f4ff;color:var(--navy);border:1px solid #b8c8f0;';
+
+  card.innerHTML = `
+    <div class="student-main" style="gap:8px;">
+      <span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;${typeBadgeStyle}">${type}${isNewcomer?' · 1주차':''}</span>
+      <input class="detail-input" type="text" placeholder="이름 입력"
+        style="flex:1;margin:0;padding:8px 10px;font-size:15px;font-weight:500;"
+        oninput="updateNewcomerName('${id}',this.value)">
+      <button type="button" onclick="removeNewcomerCard('${id}')"
+        style="background:none;border:none;color:var(--text-sub);font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0;">✕</button>
+    </div>
+    <div class="absence-detail" id="detail-${id}">
+      <div class="detail-label">인도자 / 연결 선생님</div>
+      <input class="detail-input" type="text" placeholder="예: 5-1 박지윤 친구" oninput="updateField('${id}','guide',this.value)" style="margin-top:4px;">
+      <div class="detail-label" style="margin-top:10px">메모</div>
+      <textarea class="detail-input" rows="2" placeholder="특이사항이나 연락처 등..." oninput="updateField('${id}','memo',this.value)"></textarea>
+    </div>
+  `;
+
+  const addArea = document.getElementById('newcomer-add-area');
+  list.insertBefore(card, addArea);
+  updateStats();
+}
+
+// 새신자 추가 시 이름 입력 → localStorage에 즉시 반영
+function updateNewcomerName(id, name) {
+  updateField(id, 'name', name);
+  const data = attendanceData[id];
+  if (!data || !data.isNew || data.type !== '새신자' || !name.trim()) return;
+  // 1주차 새신자면 newcomerData에 추가
+  const newcomers = loadNewcomers();
+  // 이미 존재하는지 체크 (같은 세션에서 중복 방지)
+  data._savedName = data._savedName || '';
+  // 이전에 저장된 이름 제거 후 현재 이름으로 업데이트
+  const filtered = newcomers.filter(n => n.name !== data._savedName);
+  filtered.push({ name: name.trim(), grade: '', week: 1, graduated: false, guide: data.guide||'', memo: data.memo||'' });
+  data._savedName = name.trim();
+  saveNewcomers(filtered);
+}
+
+function removeNewcomerCard(id) {
+  const data = attendanceData[id];
+  // 새로 추가한 새신자라면 localStorage에서도 제거
+  if (data && data.isNew && data.type === '새신자' && data._savedName) {
+    const newcomers = loadNewcomers().filter(n => n.name !== data._savedName);
+    saveNewcomers(newcomers);
+  }
+  delete attendanceData[id];
+  const card = document.getElementById('card-' + id);
+  if (card) card.remove();
+  updateStats();
+}
+
+function setStatus(name, status) {
+  const data = attendanceData[name];
+  const prevStatus = data.status;
+  data.status = status;
+
+  const card = document.getElementById(`card-${name}`);
+  const btnP = document.getElementById(`btn-p-${name}`);
+  const btnA = document.getElementById(`btn-a-${name}`);
+
+  card.className = 'student-card detail-open ' + (status === 'present' ? 'present' : 'absent');
+  btnP.className = 'toggle-btn' + (status === 'present' ? ' active-present' : '');
+  btnA.className = 'toggle-btn' + (status === 'absent' ? ' active-absent' : '');
+
+  // 새신자: 출석 시 주차 자동 증가, 결석 시 칩 비활성
+  if (data.isExisting) {
+    if (status === 'present' && prevStatus !== 'present') {
+      applyWeekChip(name);
+    } else if (status === 'absent') {
+      clearWeekChip(name);
+    }
+  }
+
+  updateStats();
+}
+
+
+function toggleChip(name, method, el) {
+  const data = attendanceData[name];
+  const idx = data.contactMethod.indexOf(method);
+  if (idx >= 0) {
+    data.contactMethod.splice(idx, 1);
+    el.classList.remove('selected');
+  } else {
+    data.contactMethod.push(method);
+    el.classList.add('selected');
+  }
+}
+
+function updateField(name, field, val) {
+  attendanceData[name][field] = val;
+}
+
+function setAll(mode) {
+  currentClass.students.forEach(name => {
+    if (mode === 'reset') {
+      attendanceData[name].status = null;
+      const card = document.getElementById(`card-${name}`);
+      card.className = 'student-card';
+      document.getElementById(`btn-p-${name}`).className = 'toggle-btn';
+      document.getElementById(`btn-a-${name}`).className = 'toggle-btn';
+    } else {
+      setStatus(name, mode === 'present' ? 'present' : 'absent');
+    }
+  });
+  updateStats();
+
+  // 버튼 잠깐 피드백 후 원상복구
+  const btnMap = { present: 'bulk-present', absent: 'bulk-absent', reset: 'bulk-reset' };
+  const labelMap = { present: '✓ 전원 출석', absent: '전원 결석', reset: '초기화' };
+  const btn = document.getElementById(btnMap[mode]);
+  btn.textContent = '✓ 완료';
+  btn.style.background = mode === 'present' ? 'var(--present-bg)' : mode === 'absent' ? 'var(--absent-bg)' : '#f0f4ff';
+  btn.style.color = mode === 'present' ? 'var(--present)' : mode === 'absent' ? 'var(--absent)' : 'var(--navy)';
+  btn.style.borderColor = mode === 'present' ? 'var(--present)' : mode === 'absent' ? 'var(--absent)' : 'var(--navy)';
+  setTimeout(() => {
+    btn.textContent = labelMap[mode];
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }, 800);
+}
+
+function updateStats() {
+  const vals = Object.values(attendanceData);
+  if (currentClass && currentClass.isNewcomer) {
+    const presentCount = vals.filter(v => v.status === 'present').length;
+    const absentCount  = vals.filter(v => v.status === 'absent').length;
+    const newToday     = vals.filter(v => v.isNew && v.type === '새신자').length;
+    document.getElementById('stat-present').textContent = presentCount;
+    document.getElementById('stat-absent').textContent  = absentCount;
+    document.getElementById('stat-total').textContent   = newToday;
+    document.querySelector('.present-stat .stat-label').textContent = '출석';
+    document.querySelector('.absent-stat .stat-label').textContent  = '결석';
+    document.querySelector('.total-stat .stat-label').textContent   = '신규추가';
+  } else {
+    document.querySelector('.present-stat .stat-label').textContent = '출석';
+    document.querySelector('.absent-stat .stat-label').textContent  = '결석';
+    document.querySelector('.total-stat .stat-label').textContent   = '재적';
+    const present = vals.filter(v => v.status === 'present').length;
+    const absent  = vals.filter(v => v.status === 'absent').length;
+    document.getElementById('stat-present').textContent = present;
+    document.getElementById('stat-absent').textContent  = absent;
+  }
+}
+
+// ═══════════════════════════════════════════
+// 제출
+// ═══════════════════════════════════════════
+async function submitAttendance() {
+  // 새신자 출석 확정분 → localStorage에 주차 반영 (제출 시점에만)
+  if (currentClass && currentClass.isNewcomer) {
+    const newcomers = loadNewcomers();
+    let changed = false;
+    Object.values(attendanceData).forEach(d => {
+      if (d.isExisting && d.status === 'present' && d.displayWeek !== undefined) {
+        const ri = d.realIdx;
+        if (ri !== undefined && newcomers[ri]) {
+          newcomers[ri].week = d.displayWeek;
+          newcomers[ri].graduated = d.displayGraduated || false;
+          changed = true;
+        }
+      }
+    });
+    if (changed) saveNewcomers(newcomers);
+  }
+
+  const vals = Object.values(attendanceData);
+  const unchecked = Object.keys(attendanceData).filter(n => !attendanceData[n].status);
+  if (unchecked.length > 0) {
+    if (!confirm(`아직 체크 안 된 학생이 ${unchecked.length}명 있어요.\n(${unchecked.slice(0,3).join(', ')}${unchecked.length>3?'..':''})\n그래도 제출할까요?`)) return;
+  }
+
+  // 수정 제출 확인
+  if (currentClass._isResubmit) {
+    if (!confirm('수정된 출결정보를 제출하시겠습니까?')) return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  const txt = document.getElementById('submit-text');
+  btn.classList.add('loading');
+  txt.textContent = '저장 중...';
+
+  const now = new Date();
+  const payload = {
+    timestamp: now.toISOString(),
+    date: `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,
+    class: currentClass.id,
+    teacher: currentClass.teacher,
+    students: currentClass.students.map(name => ({
+      name,
+      status: attendanceData[name].status || '미체크',
+      contactMethod: attendanceData[name].contactMethod.join(', '),
+      reason: attendanceData[name].reason,
+      memo: attendanceData[name].memo,
+    })),
+    extra: {
+      lesson: document.getElementById('extra-lesson').value,
+      prayer: document.getElementById('extra-prayer').value,
+      special: document.getElementById('extra-special').value,
+    }
+  };
+
+  // ── 오늘 제출 데이터 localStorage에 항상 저장 (재진입 복원용)
+  saveSubmission(currentClass.id, payload);
+
+  // Google Apps Script로 전송 (URL 설정 전이면 로컬에만)
+  let saved = false;
+  if (CONFIG.scriptUrl && CONFIG.scriptUrl !== 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
+    try {
+      await fetch(CONFIG.scriptUrl, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      saved = true;
+    } catch(e) {
+      console.error(e);
+    }
+  } else {
+    saved = true;
+  }
+
+  btn.classList.remove('loading');
+  txt.textContent = currentClass._isResubmit ? '수정 제출하기' : '출석 제출하기';
+
+  // 반 선택 화면 뱃지 갱신
+  renderClassSelect();
+
+  // 완료 화면
+  const present = vals.filter(v => v.status === 'present').length;
+  const absent  = vals.filter(v => v.status === 'absent').length;
+  const isResubmit = currentClass._isResubmit;
+  currentClass._isResubmit = true; // 이제부터 수정모드
+  document.getElementById('done-sub-text').textContent = saved
+    ? (isResubmit ? '출결 정보가 수정되었습니다.' : '출석 정보가 성공적으로 저장되었습니다.')
+    : '네트워크 오류. 잠시 후 다시 시도해주세요.';
+  document.getElementById('done-summary').innerHTML = `
+    <div class="done-row"><span class="done-row-label">반</span><span class="done-row-val">${currentClass.id}반 (${currentClass.teacher} 선생님)</span></div>
+    <div class="done-row"><span class="done-row-label">출석</span><span class="done-row-val" style="color:var(--present)">${present}명</span></div>
+    <div class="done-row"><span class="done-row-label">결석</span><span class="done-row-val" style="color:var(--absent)">${absent}명</span></div>
+    <div class="done-row"><span class="done-row-label">재적</span><span class="done-row-val">${currentClass.students.length}명</span></div>
+  `;
+  showScreen('done');
+  window.scrollTo(0, 0);
+}
+
+// ═══════════════════════════════════════════
+// 오늘 제출 데이터 저장 / 로드
+// ═══════════════════════════════════════════
+function todayKey() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+}
+function submittedKey(classId) { return `submitted_${todayKey()}_${classId}`; }
+
+function saveSubmission(classId, data) {
+  localStorage.setItem(submittedKey(classId), JSON.stringify(data));
+}
+function loadSubmission(classId) {
+  try {
+    const v = localStorage.getItem(submittedKey(classId));
+    return v ? JSON.parse(v) : null;
+  } catch(e) { return null; }
+}
+function isSubmitted(classId) { return !!localStorage.getItem(submittedKey(classId)); }
+
+// ═══════════════════════════════════════════
+// 초기화
+// ═══════════════════════════════════════════
+renderClassSelect();
+</script>
+</body>
+</html>
