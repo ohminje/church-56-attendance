@@ -775,10 +775,11 @@ const STUDENT_MAP = {};
 
 async function loadClassesFromFirestore() {
   try {
-    const snap = await db.collection('students').where('active', '==', true).get();
+    const snap = await db.collection('students').get();
     const byClass = {};
     snap.forEach(doc => {
       const s = doc.data();
+      if (s.active === false) return; // 비활성 학생 제외
       STUDENT_MAP[`${s.class}_${s.name}`] = { id: doc.id, name: s.name, school: s.school };
       if (!byClass[s.class]) {
         byClass[s.class] = { id: s.class, grade: s.grade, teacher: s.teacher, students: [], studentDocs: [] };
