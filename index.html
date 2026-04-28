@@ -715,11 +715,11 @@
 </div>
 
 
-<script type="module">
-// Firebase 초기화 → window에 db 등록
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
-
+<!-- Firebase compat SDK (CSP eval 문제 없음) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+// Firebase 초기화
 const firebaseConfig = {
   apiKey: "AIzaSyCLN7Qfk_Ex5VA2iP9CkvO71O8x3pSUhj0",
   authDomain: "church-56.firebaseapp.com",
@@ -728,17 +728,13 @@ const firebaseConfig = {
   messagingSenderId: "646807576724",
   appId: "1:646807576724:web:42e27698c73ab2cf321481"
 };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-
-// db와 Firestore 함수들을 window에 등록 (일반 script에서 사용)
-window._db      = db;
-window._doc     = doc;
-window._setDoc  = setDoc;
-window._getDoc  = getDoc;
-
-// Firebase 준비 완료 이벤트 발생
+// Firestore 헬퍼를 window에 등록
+window._db     = db;
+window._setDoc = (ref, data) => ref.set(data);
+window._getDoc = (ref)       => ref.get();
 window.dispatchEvent(new Event('firebaseReady'));
 </script>
 
@@ -750,11 +746,20 @@ const CONFIG = {
   password: '56부2026',   // ← 비밀번호 여기서 변경
 };
 
-// Firestore 헬퍼 (window._db 준비 후 사용)
-function getDb()     { return window._db; }
-function fsDoc(...a) { return window._doc(...a); }
-function fsSet(...a) { return window._setDoc(...a); }
-function fsGet(...a) { return window._getDoc(...a); }
+// Firestore 헬퍼 (compat SDK 방식)
+function getDb() { return window._db; }
+// compat: db.collection().doc() 체이닝
+function fsDocRef(col, ...path) {
+  // path: [date, 'classes', classId] or ['newcomers']
+  let ref = getDb().collection(col);
+  for (let i = 0; i < path.length; i++) {
+    if (i % 2 === 0) ref = ref.doc(path[i]);
+    else             ref = ref.collection(path[i]);
+  }
+  return ref;
+}
+async function fsSet(ref, data) { return window._setDoc(ref, data); }
+async function fsGet(ref)       { return window._getDoc(ref); }
 
 // ═══════════════════════════════════════════
 // 학생 데이터 (관리자 페이지에서 수정되면 localStorage에 저장됨)
@@ -805,16 +810,16 @@ function saveNewcomers(list) {
   localStorage.setItem('newcomerData', JSON.stringify(list));
   // Firestore 동기화
   try {
-    const docRef = fsDoc(getDb(), 'meta', 'newcomers');
+    const docRef = fsDocRef('meta', 'newcomers');
     fsSet(docRef, { list, updatedAt: new Date().toISOString() });
   } catch(e) { console.error('newcomer sync 오류:', e); }
 }
 
 async function syncNewcomersFromFirestore() {
   try {
-    const docRef = fsDoc(getDb(), 'meta', 'newcomers');
+    const docRef = fsDocRef('meta', 'newcomers');
     const snap   = await fsGet(docRef);
-    if (snap.exists()) {
+    if (snap.exists) {
       const remote = snap.data().list;
       localStorage.setItem('newcomerData', JSON.stringify(remote));
       return remote;
@@ -1470,9 +1475,10 @@ async function submitAttendance() {
   saveSubmission(currentClass.id, payload);
 
   // ── Firestore 저장
+  // 경로: attendance/{date}/classes/{classId}
   let saved = false;
   try {
-    const docRef = fsDoc(getDb(), 'attendance', payload.date, 'classes', currentClass.id);
+    const docRef = fsDocRef('attendance', payload.date, 'classes', currentClass.id);
     await fsSet(docRef, payload);
     saved = true;
   } catch(e) {
